@@ -1,5 +1,7 @@
 @import "tailwindcss";
-@source "../src";
+@source "../nori2023/app";
+@source "../nori2023/assets/admin.js";
+@source "../nori2023/assets/site.js";
 
 /* デザインシステム：ナチュラル × ヴィンテージ × 上質感 */
 @theme {

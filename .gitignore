@@ -1,5 +1,7 @@
 node_modules
-.wrangler
-.dev.vars
-public/assets/app.css
-dist
+# サーバー上で作られるもの（リポジトリに入れない）
+nori2023/app/config.php
+nori2023/uploads/products/*
+nori2023/uploads/site/*
+nori2023/uploads/instagram/*
+!nori2023/uploads/**/.keep

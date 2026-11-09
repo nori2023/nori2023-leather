@@ -1,27 +1,12 @@
 {
-  "name": "nori2023-leather",
-  "version": "1.0.0",
+  "name": "nori2023-leather-php",
+  "private": true,
+  "description": "おっさんのレザークラフト（mpr-shop.com/nori2023）— CSS の生成にだけ使う（サーバーには Node.js は不要）",
   "scripts": {
-    "css": "tailwindcss -i ./styles/app.css -o ./public/assets/app.css --minify",
-    "css:watch": "tailwindcss -i ./styles/app.css -o ./public/assets/app.css --watch",
-    "dev": "npm run css && wrangler dev",
-    "db:migrate:local": "wrangler d1 migrations apply DB --local",
-    "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
-    "typecheck": "tsc",
-    "build": "npm run css && tsc",
-    "deploy": "npm run css && wrangler d1 migrations apply DB --remote && wrangler deploy"
-  },
-  "dependencies": {
-    "hono": "^4.13.17",
-    "zod": "^4.6.7"
+    "css": "tailwindcss -i ./styles/app.css -o ./nori2023/assets/app.css --minify"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20261108.1",
     "@tailwindcss/cli": "^4.3.5",
-    "tailwindcss": "^4.3.5",
-    "typescript": "^7.0.2",
-    "wrangler": "^4.158.0"
-  },
-  "private": true,
-  "type": "module"
+    "tailwindcss": "^4.3.5"
+  }
 }

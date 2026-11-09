@@ -1,0 +1,55 @@
+# GitHub に反映すると、エックスサーバー（mpr-shop.com/nori2023）へ自動でアップロードする。
+# 事前に GitHub の Settings → Secrets and variables → Actions に次の4つを登録する（docs/SETUP_XSERVER.md 参照）
+#   XSERVER_HOST     例：sv12345.xserver.jp
+#   XSERVER_USER     サーバーID
+#   XSERVER_SSH_KEY  エックスサーバーで作成した秘密鍵（.key ファイルの中身）
+#   XSERVER_PATH     例：/home/サーバーID/mpr-shop.com/public_html/nori2023
+name: Deploy to Xserver
+
+on:
+  push:
+    branches: [main]
+    paths: ["nori2023/**", ".github/workflows/deploy.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-xserver
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check secrets
+        id: check
+        env:
+          HOST: ${{ secrets.XSERVER_HOST }}
+        run: |
+          if [ -z "$HOST" ]; then
+            echo "XSERVER_HOST が未設定のため、アップロードはスキップします。"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload with rsync over SSH
+        if: steps.check.outputs.skip != 'true'
+        env:
+          HOST: ${{ secrets.XSERVER_HOST }}
+          USER: ${{ secrets.XSERVER_USER }}
+          KEY: ${{ secrets.XSERVER_SSH_KEY }}
+          TARGET: ${{ secrets.XSERVER_PATH }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/xserver_key
+          chmod 600 ~/.ssh/xserver_key
+          ssh-keyscan -p 10022 "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          # config.php（DB接続情報）とアップロード画像はサーバー側のものを残す
+          rsync -rlptvz --delete \
+            --exclude 'app/config.php' \
+            --exclude 'uploads/products/***' \
+            --exclude 'uploads/site/***' \
+            --exclude 'uploads/instagram/***' \
+            -e "ssh -p 10022 -i ~/.ssh/xserver_key -o IdentitiesOnly=yes" \
+            ./nori2023/ "$USER@$HOST:$TARGET/"
+          rm -f ~/.ssh/xserver_key

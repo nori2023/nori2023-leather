@@ -1,102 +1,69 @@
 # 設計書：おっさんのレザークラフト（Nori2023）
 
-最終更新：2026-11-08（Cloudflare 無料プラン構成へ移行、STEP 1・2 完了）
+最終更新：2026-11-09（エックスサーバー PHP 版へ移行、STEP 1・2 完了）
 
-## 1. 技術スタック
+## 1. 技術構成
 
-| 区分 | 採用 | 理由 |
+| 区分 | 採用 | 備考 |
 |---|---|---|
-| 実行環境 | Cloudflare Workers（無料プラン） | 商用利用可・月額0円・停止なし |
-| フレームワーク | Hono 4（サーバー側でHTMLを生成） | 軽量（CPU 10ms・3MiB 制限に収まる）。現在 gzip 177KiB |
-| 言語 | TypeScript（JSX） | |
-| スタイル | Tailwind CSS 4（CLIで事前生成） | STEP 1 のデザインをそのまま移植 |
-| DB | Cloudflare D1（SQLite） | 無料5GB |
-| 画像保存 | D1（既定）／R2（任意） | R2 は有効化にカード登録が必要なため既定は D1 |
-| 管理者認証 | Cloudflare Access（Zero Trust 無料）＋ Worker 側で JWT 検証 | パスワード管理不要・二要素相当 |
+| サーバー | エックスサーバー（mpr-shop.com/nori2023） | 既存契約・追加費用なし |
+| 言語 | PHP 8.1 以上（フレームワークなし） | 依存ライブラリなし。アップロードするだけで動く |
+| DB | MySQL / MariaDB（utf8mb4） | 初回設定で自動作成、以後の変更は `app/migrations/` を自動適用 |
+| スタイル | Tailwind CSS 4（開発時に生成済みの CSS を同梱） | |
 | フォント | Google Fonts（Noto Serif JP / Noto Sans JP） | |
-| 定期処理 | Cron Trigger（6時間ごと） | Instagram 最新投稿の取得 |
+| 画像 | `uploads/`（ブラウザで縮小→サーバーで検証して保存） | 長辺1600px＋640pxの2サイズ |
+| 管理者認証 | メール＋パスワード（bcrypt）、セッション | 5回失敗で15分ロック、CSRFトークン |
+| 定期処理 | 表示時の遅延実行＋（任意）Cron | Instagram 最新投稿 |
+| 反映 | GitHub Actions → SSH（rsync） | または手作業アップロード |
 
-旧構成（Next.js＋Supabase＋Vercel）は、本番運用に月額約45ドル必要なため不採用。
-
-## 2. 画面構成
+## 2. 画面構成（URL はすべて /nori2023 配下）
 
 ```
-公開側（サーバー描画）
-  /                         トップ ..................... ✅（Instagram 最新投稿6件を含む）
-  /shop  /shop?category=    商品一覧・カテゴリー絞込 ... ✅
-  /shop/:slug               商品詳細 ................... ✅（スワイプ・サムネイル・拡大・SOLD OUT）
-  /about                    制作者紹介 ................. ✅（本文は管理画面で編集可）
-  /gallery ほか             準備中ページ ............... STEP 4〜7
-  /media/*                  画像配信（D1/R2 → エッジキャッシュ）
-  /robots.txt /sitemap.xml
-管理画面（Cloudflare Access 必須）
-  /admin                    ダッシュボード ............. ✅
-  /admin/products           完成品の登録・編集・写真 ... ✅
-  /admin/categories         カテゴリー ................. ✅
-  /admin/shipping           送料設定 ................... ✅
-  /admin/settings           トップ画像・コピー・制作者紹介 ✅
-  /admin/instagram          Instagram 連携 ............. ✅
-  /admin/logs               操作履歴 ................... ✅
+公開側
+  /                     トップ（Instagram 最新投稿6件を含む） ✅
+  /shop  ?category=     商品一覧・カテゴリー絞込 ✅
+  /shop/{slug}          商品詳細（スワイプ・サムネイル・拡大・SOLD OUT・おっさんからひとこと） ✅
+  /about                制作者紹介（本文は管理画面で編集） ✅
+  /gallery ほか         準備中ページ（STEP 4〜7）
+  /sitemap.xml
+  /install              初回設定（設定後は無効）
+管理画面（ログイン必須）
+  /admin                ダッシュボード ✅
+  /admin/products       完成品の登録・編集・写真 ✅
+  /admin/categories     カテゴリー ✅
+  /admin/shipping       送料設定 ✅
+  /admin/settings       トップ画像・コピー・制作者紹介 ✅
+  /admin/instagram      Instagram 連携 ✅
+  /admin/logs           操作履歴 ✅
+  /admin/account        パスワード変更 ✅
 ```
 
-## 3. データベース（migrations/）
+## 3. データベース
 
-- `0001_init.sql`：全テーブル（商品・注文・決済・受注制作・発送・ワークショップ・問い合わせ・経年変化・操作履歴）
-- `0002_instagram.sql`：Instagram トークン・投稿キャッシュ
-- `0003_media_objects.sql`：画像の保存先（D1）
-- `0004_sold_note.sql`：SOLD OUT 後のコメント（おっさんからひとこと）
-- `0005_hiroshima_copy.sql`：トップのサブコピーを広島弁に更新
+`app/migrations/001_init.sql` に全テーブル（商品・注文・決済・受注制作・発送・ワークショップ・問い合わせ・経年変化・Instagram・管理者・操作履歴）。
 
 ### 業務ルール
-- 販売中にできる写真枚数：1枚以上（`photoCountOk`、src/lib/types.ts で一元管理）
-- お客様向けの文言はすべて広島弁。特定商取引法に基づく表記・プライバシーポリシー・利用規約など法定表示は、正確さを優先して標準語で作成する（STEP 7）
+- 販売中にできる写真枚数：1枚以上（`photo_count_ok()`、app/lib/site.php）
+- 売れた商品は削除不可（SOLD OUT作品集に残す）
+- お客様向けの文言はすべて広島弁。特定商取引法に基づく表記・プライバシーポリシー・利用規約は正確さを優先して標準語（STEP 7）
+- 本番販売（`sales.enabled`）は全機能完成まで false
 
-### 二重販売防止（STEP 3 で実装予定）
-D1 は対話的トランザクションがないため、次の2段で担保する。
-1. `UPDATE products SET status='reserved' WHERE id=? AND status='on_sale'` の **条件付き更新**（1文で原子的）。更新件数が1のときだけ確保成功
-2. `product_reservations` の部分ユニーク索引（有効な確保は1商品1件）
-確保・注文作成は `db.batch()`（原子的に実行）でまとめる。
+### 二重販売防止（STEP 3 で実装）
+InnoDB のトランザクション内で `SELECT ... FROM products WHERE id = ? FOR UPDATE` → `status = 'on_sale'` を確認 → `reserved` に更新＋`product_reservations` 登録。決済結果をサーバー側で検証してから `sold_out` に確定。
 
-## 4. フォルダー構成
+## 4. セキュリティ
 
-```
-src/
-  index.tsx            エントリ（ルーティング・エラー処理・Cron）
-  env.ts               環境変数とバインディングの型
-  lib/
-    db.ts              DB アクセス
-    auth.ts            管理者認証（Access JWT 検証）
-    media.ts           画像保存（D1/R2 切替）
-    instagram.ts       Instagram 同期
-    site.ts types.ts format.ts
-  routes/
-    public.tsx         公開ページ
-    admin.tsx          管理画面
-  views/
-    layout.tsx components.tsx admin-layout.tsx
-styles/app.css         Tailwind 入力（デザイン定義）
-public/                静的ファイル（Worker を通さず無料配信）
-  assets/ site.js admin.js app.css（生成）
-  images/ brand/ site/ works/
-migrations/            D1 スキーマ
-reference-images/      公開しない参考画像（デザイン参考・確認待ちの画像）
-docs/                  設計書・公開手順・管理マニュアル
-```
+- `app/` はブラウザから 403（`.htaccess`）。`config.php` は 0600
+- `uploads/` は JPEG/WebP 以外を 403、PHP 等のハンドラーを無効化
+- 画像：マジックナンバーと `getimagesizefromstring` で検証、保存名はサーバー側で採番
+- SQL はすべてプリペアドステートメント、HTML 出力はすべてエスケープ
+- 管理画面：パスワード bcrypt、ログイン試行制限、セッション固定対策、Cookie は HttpOnly / SameSite=Lax / HTTPS時 Secure、全 POST で CSRF トークン＋Origin 確認、`X-Frame-Options: DENY`、`Cache-Control: no-store`
+- 初回設定は設置キー必須・設定後は無効
+- 操作履歴（audit_logs）
 
-## 5. セキュリティ
+## 5. 未完了・注意事項
 
-- 管理画面：Cloudflare Access（メールのワンタイムコード）＋ Worker で JWT の署名・発行元・AUD・メールアドレスを検証。未設定時は 503（誰も入れない）
-- CSRF：管理画面の POST は Origin を検証（外部サイトからは 403）
-- 画像アップロード：ブラウザで縮小・再エンコード（位置情報等のメタデータは消える）＋ サーバーでマジックナンバー検証（JPEG/WebP のみ）・サイズ上限
-- 公開画像の配信は `products/` `site/` `instagram/` のみ許可
-- セキュリティヘッダー（nosniff・Referrer-Policy・X-Frame-Options 等）、管理画面は no-store
-- Instagram トークンは D1 に保存し画面に再表示しない
-- 操作履歴（audit_logs）を記録
-- カード番号は保持しない（決済はゼウス側で完結予定）
-
-## 6. 未完了・注意事項
-
-- **お客様へのメール送信には独自ドメインがほぼ必須**（STEP 3 以降）
-- 入稿ロゴ（最大20MB、STEP 4）は D1 の1行2MB制限を超えるため、分割保存するか R2（カード登録）を使うかを STEP 4 で決める
-- D1 に保存した画像の読み出しは CPU を使うため、エッジキャッシュで負荷を抑えている。アクセス増で表示が不安定になった場合は R2 へ切り替え
-- 本番販売（`sales.enabled`）は全機能完成まで false のまま
+- エックスサーバーの PHP バージョン（mpr-shop.com 全体の設定）が 8.1 以上であること
+- お客様へのメール送信（STEP 3 以降）は mpr-shop.com のメールアドレスから送る想定。会社ドメインから個人ブランドのメールを送ってよいか要確認
+- 特定商取引法の表記で販売者を明記する必要あり（会社ドメインの下で個人ブランドを販売する点を含め、公開前に確認）
+- 入稿ロゴ（STEP 4）は公開フォルダの外（`/home/サーバーID/nori2023_storage/` など）に保存する
