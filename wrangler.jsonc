@@ -9,7 +9,7 @@
   "assets": { "directory": "./public", "binding": "ASSETS" },
   "d1_databases": [
     // database_id は Cloudflare で D1 を作成後に書き換える（docs/DEPLOY.md 参照）
-    { "binding": "DB", "database_name": "nori2023-db", "database_id": "00000000-0000-0000-0000-000000000000", "migrations_dir": "migrations" }
+    { "binding": "DB", "database_name": "nori2023-db", "database_id": "218af5e3-8cf2-4f62-8caa-849a0c75bf72", "migrations_dir": "migrations" }
   ],
   // 画像は D1 に保存（カード登録不要）。R2 を使う場合だけ下記のコメントを外す（docs/DEPLOY.md 参照）
   // "r2_buckets": [
