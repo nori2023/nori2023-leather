@@ -5,9 +5,10 @@
 --   二重販売防止：トランザクション＋SELECT ... FOR UPDATE（STEP 3）
 --   カード番号は一切保存しない
 --   ※ このファイルの文字列の中にセミコロンを書かないこと（文の区切りに使うため）
+--   ※ 途中で失敗しても、もう一度実行すれば続きから作れるようにしている（IF NOT EXISTS / INSERT IGNORE）
 -- =====================================================================
 
-CREATE TABLE admin_users (
+CREATE TABLE IF NOT EXISTS admin_users (
   id            CHAR(36)     NOT NULL PRIMARY KEY,
   email         VARCHAR(255) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
@@ -15,7 +16,7 @@ CREATE TABLE admin_users (
   created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE login_attempts (
+CREATE TABLE IF NOT EXISTS login_attempts (
   id           BIGINT AUTO_INCREMENT PRIMARY KEY,
   ip           VARCHAR(45)  NOT NULL,
   email        VARCHAR(255) NOT NULL,
@@ -25,7 +26,7 @@ CREATE TABLE login_attempts (
   INDEX (email, attempted_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE site_settings (
+CREATE TABLE IF NOT EXISTS site_settings (
   `key`      VARCHAR(100) NOT NULL PRIMARY KEY,
   value      TEXT         NOT NULL,
   updated_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -33,7 +34,7 @@ CREATE TABLE site_settings (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------- 1点もの完成品
-CREATE TABLE categories (
+CREATE TABLE IF NOT EXISTS categories (
   id         CHAR(36)    NOT NULL PRIMARY KEY,
   slug       VARCHAR(80) NOT NULL UNIQUE,
   name       VARCHAR(80) NOT NULL,
@@ -41,7 +42,7 @@ CREATE TABLE categories (
   created_at DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE shipping_profiles (
+CREATE TABLE IF NOT EXISTS shipping_profiles (
   id         CHAR(36)     NOT NULL PRIMARY KEY,
   name       VARCHAR(100) NOT NULL,
   fee        INT          NULL,
@@ -51,7 +52,7 @@ CREATE TABLE shipping_profiles (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- status: draft=非公開 / on_sale=販売中 / reserved=購入手続き中 / sold_out=SOLD OUT / suspended=販売停止
-CREATE TABLE products (
+CREATE TABLE IF NOT EXISTS products (
   id                  CHAR(36)     NOT NULL PRIMARY KEY,
   code                VARCHAR(40)  NOT NULL UNIQUE,
   slug                VARCHAR(80)  NOT NULL UNIQUE,
@@ -75,7 +76,7 @@ CREATE TABLE products (
   CONSTRAINT fk_products_shipping FOREIGN KEY (shipping_profile_id) REFERENCES shipping_profiles(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE product_images (
+CREATE TABLE IF NOT EXISTS product_images (
   id          CHAR(36)     NOT NULL PRIMARY KEY,
   product_id  CHAR(36)     NOT NULL,
   key_large   VARCHAR(255) NOT NULL,
@@ -91,7 +92,7 @@ CREATE TABLE product_images (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------- 注文（完成品・受注制作 共通）
-CREATE TABLE orders (
+CREATE TABLE IF NOT EXISTS orders (
   id               CHAR(36)     NOT NULL PRIMARY KEY,
   order_number     VARCHAR(40)  NOT NULL UNIQUE,
   order_type       ENUM('product','custom') NOT NULL,
@@ -120,7 +121,7 @@ CREATE TABLE orders (
   INDEX (order_type, status, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE custom_products (
+CREATE TABLE IF NOT EXISTS custom_products (
   id                 CHAR(36)     NOT NULL PRIMARY KEY,
   slug               VARCHAR(80)  NOT NULL UNIQUE,
   name               VARCHAR(120) NOT NULL,
@@ -136,7 +137,7 @@ CREATE TABLE custom_products (
   updated_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE order_items (
+CREATE TABLE IF NOT EXISTS order_items (
   id                CHAR(36)     NOT NULL PRIMARY KEY,
   order_id          CHAR(36)     NOT NULL,
   product_id        CHAR(36)     NULL,
@@ -152,7 +153,7 @@ CREATE TABLE order_items (
   CONSTRAINT fk_items_custom FOREIGN KEY (custom_product_id) REFERENCES custom_products(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE product_reservations (
+CREATE TABLE IF NOT EXISTS product_reservations (
   id          CHAR(36)  NOT NULL PRIMARY KEY,
   product_id  CHAR(36)  NOT NULL,
   order_id    CHAR(36)  NULL,
@@ -165,7 +166,7 @@ CREATE TABLE product_reservations (
   CONSTRAINT fk_res_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE payments (
+CREATE TABLE IF NOT EXISTS payments (
   id              CHAR(36)     NOT NULL PRIMARY KEY,
   order_id        CHAR(36)     NOT NULL,
   provider        ENUM('zeus','mock') NOT NULL,
@@ -180,7 +181,7 @@ CREATE TABLE payments (
   CONSTRAINT fk_pay_order FOREIGN KEY (order_id) REFERENCES orders(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE payment_events (
+CREATE TABLE IF NOT EXISTS payment_events (
   id          CHAR(36)     NOT NULL PRIMARY KEY,
   provider    VARCHAR(20)  NOT NULL,
   event_key   VARCHAR(150) NOT NULL,
@@ -191,7 +192,7 @@ CREATE TABLE payment_events (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------- 受注制作（名刺入れ・カードケース）
-CREATE TABLE custom_product_images (
+CREATE TABLE IF NOT EXISTS custom_product_images (
   id                CHAR(36)     NOT NULL PRIMARY KEY,
   custom_product_id CHAR(36)     NOT NULL,
   key_large         VARCHAR(255) NOT NULL,
@@ -204,7 +205,7 @@ CREATE TABLE custom_product_images (
   CONSTRAINT fk_cpi_product FOREIGN KEY (custom_product_id) REFERENCES custom_products(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE custom_orders (
+CREATE TABLE IF NOT EXISTS custom_orders (
   id                  CHAR(36)     NOT NULL PRIMARY KEY,
   order_id            CHAR(36)     NOT NULL UNIQUE,
   custom_product_id   CHAR(36)     NOT NULL,
@@ -229,7 +230,7 @@ CREATE TABLE custom_orders (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 入稿ファイルは公開フォルダの外（storage/）に保存する（STEP 4）
-CREATE TABLE custom_order_files (
+CREATE TABLE IF NOT EXISTS custom_order_files (
   id              CHAR(36)     NOT NULL PRIMARY KEY,
   custom_order_id CHAR(36)     NOT NULL,
   storage_path    VARCHAR(255) NOT NULL,
@@ -245,7 +246,7 @@ CREATE TABLE custom_order_files (
   CONSTRAINT fk_cof_order FOREIGN KEY (custom_order_id) REFERENCES custom_orders(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE custom_order_proofs (
+CREATE TABLE IF NOT EXISTS custom_order_proofs (
   id               CHAR(36)    NOT NULL PRIMARY KEY,
   custom_order_id  CHAR(36)    NOT NULL,
   version          INT         NOT NULL,
@@ -261,7 +262,7 @@ CREATE TABLE custom_order_proofs (
   CONSTRAINT fk_cop_order FOREIGN KEY (custom_order_id) REFERENCES custom_orders(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE custom_order_approvals (
+CREATE TABLE IF NOT EXISTS custom_order_approvals (
   id         CHAR(36)     NOT NULL PRIMARY KEY,
   proof_id   CHAR(36)     NOT NULL,
   action     ENUM('approved','revision_requested') NOT NULL,
@@ -274,7 +275,7 @@ CREATE TABLE custom_order_approvals (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------- 発送
-CREATE TABLE shipping_records (
+CREATE TABLE IF NOT EXISTS shipping_records (
   id               CHAR(36)     NOT NULL PRIMARY KEY,
   order_id         CHAR(36)     NOT NULL,
   carrier          VARCHAR(50)  NOT NULL,
@@ -288,7 +289,7 @@ CREATE TABLE shipping_records (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------- ワークショップ
-CREATE TABLE workshop_events (
+CREATE TABLE IF NOT EXISTS workshop_events (
   id           CHAR(36)     NOT NULL PRIMARY KEY,
   title        VARCHAR(150) NOT NULL,
   item_name    VARCHAR(100) NOT NULL,
@@ -306,7 +307,7 @@ CREATE TABLE workshop_events (
   updated_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE workshop_reservations (
+CREATE TABLE IF NOT EXISTS workshop_reservations (
   id         CHAR(36)     NOT NULL PRIMARY KEY,
   event_id   CHAR(36)     NOT NULL,
   name       VARCHAR(100) NOT NULL,
@@ -320,7 +321,7 @@ CREATE TABLE workshop_reservations (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------- お問い合わせ・経年変化・Instagram・操作履歴
-CREATE TABLE contact_messages (
+CREATE TABLE IF NOT EXISTS contact_messages (
   id         CHAR(36)     NOT NULL PRIMARY KEY,
   kind       ENUM('contact','custom_request') NOT NULL DEFAULT 'contact',
   name       VARCHAR(100) NOT NULL,
@@ -332,7 +333,7 @@ CREATE TABLE contact_messages (
   created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE leather_aging_photos (
+CREATE TABLE IF NOT EXISTS leather_aging_photos (
   id             CHAR(36)     NOT NULL PRIMARY KEY,
   title          VARCHAR(150) NOT NULL,
   before_key     VARCHAR(255) NOT NULL,
@@ -345,14 +346,14 @@ CREATE TABLE leather_aging_photos (
   created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE integration_tokens (
+CREATE TABLE IF NOT EXISTS integration_tokens (
   name         VARCHAR(50) NOT NULL PRIMARY KEY,
   token        TEXT        NOT NULL,
   expires_at   DATETIME    NULL,
   refreshed_at DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE instagram_posts (
+CREATE TABLE IF NOT EXISTS instagram_posts (
   id         VARCHAR(50)  NOT NULL PRIMARY KEY,
   permalink  VARCHAR(255) NOT NULL,
   caption    TEXT         NULL,
@@ -363,7 +364,7 @@ CREATE TABLE instagram_posts (
   INDEX (posted_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE audit_logs (
+CREATE TABLE IF NOT EXISTS audit_logs (
   id         BIGINT AUTO_INCREMENT PRIMARY KEY,
   actor      VARCHAR(255) NULL,
   action     VARCHAR(100) NOT NULL,
@@ -373,13 +374,13 @@ CREATE TABLE audit_logs (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------- 初期データ
-INSERT INTO categories (id, slug, name, sort_order) VALUES
+INSERT IGNORE INTO categories (id, slug, name, sort_order) VALUES
   ('cat-keyholder', 'keyholder', 'レザーキーホルダー', 10),
   ('cat-coin-case', 'coin-case', 'コインケース', 20),
   ('cat-card-case', 'card-case', 'カードケース', 30),
   ('cat-other', 'other', 'その他革小物', 90);
 
-INSERT INTO site_settings (`key`, value) VALUES
+INSERT IGNORE INTO site_settings (`key`, value) VALUES
   ('home.hero', '{"catch":"おっさんが、ひとつひとつ作っとります。","sub":"使やぁ使うほど、ええ味が出てくる革小物じゃけぇ。","imageKey":null}'),
   ('sales.enabled', 'false'),
   ('instagram.sync', '{"lastSyncAt":null,"lastError":null}');

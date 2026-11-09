@@ -67,13 +67,23 @@ function install_submit(array $v): ?string
     } catch (Throwable $e) {
         return 'データベースに接続できませんでした。ホスト名・データベース名・ユーザー名・パスワードを確認してください。';
     }
+    // 別のシステムのデータベースを指定していないか確認（このサイトの表以外があれば中止）
+    $existing = $pdo->query('SHOW TABLES')->fetchAll(PDO::FETCH_COLUMN);
+    $foreign = array_values(array_diff($existing, install_known_tables()));
+    if ($foreign) {
+        return 'このデータベースには、ほかのシステムの表（' . implode('、', array_slice($foreign, 0, 5))
+            . (count($foreign) > 5 ? ' ほか' : '') . '）が入っています。このサイト専用に新しく作ったデータベースを指定してください。';
+    }
     try {
         db_migrate($pdo);
-        $st = $pdo->prepare('INSERT INTO admin_users (id, email, password_hash) VALUES (?, ?, ?)');
+        // 途中で止まった設定のやり直しにも対応（同じメールアドレスならパスワードを上書き）
+        $st = $pdo->prepare('INSERT INTO admin_users (id, email, password_hash) VALUES (?, ?, ?)
+                             ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash)');
         $st->execute([uuid(), mb_strtolower($v['email']), password_hash($pw, PASSWORD_DEFAULT)]);
     } catch (Throwable $e) {
         error_log('[nori2023 install] ' . $e->getMessage());
-        return 'テーブルの作成に失敗しました。別のサイトで使っていない、空のデータベースを指定してください。';
+        return 'テーブルの作成に失敗しました。この画面をスクリーンショットで Claude に送ってください。（詳細：'
+            . mb_substr($e->getMessage(), 0, 300) . '）';
     }
     $config = [
         'db' => ['host' => $v['db_host'], 'name' => $v['db_name'], 'user' => $v['db_user'], 'pass' => $dbPass, 'port' => 3306],
@@ -85,6 +95,17 @@ function install_submit(array $v): ?string
     }
     @chmod(APP_DIR . '/config.php', 0600);
     return null;
+}
+
+/** このサイトが作る表の名前（migrations の CREATE TABLE から取得） */
+function install_known_tables(): array
+{
+    $names = ['schema_migrations'];
+    foreach (glob(APP_DIR . '/migrations/*.sql') ?: [] as $f) {
+        preg_match_all('/CREATE TABLE (?:IF NOT EXISTS )?`?(\w+)`?/i', (string) file_get_contents($f), $m);
+        $names = array_merge($names, $m[1]);
+    }
+    return array_values(array_unique($names));
 }
 
 function install_form(array $v, ?string $error): void
