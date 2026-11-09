@@ -1,0 +1,30 @@
+{
+  // おっさんのレザークラフト（Nori2023）— Cloudflare Workers 無料プラン構成
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "nori2023-leather",
+  "main": "src/index.tsx",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat"],
+  // 静的ファイル（CSS・JS・ブランド画像）は Worker を通さず配信（無料・無制限）
+  "assets": { "directory": "./public", "binding": "ASSETS" },
+  "d1_databases": [
+    // database_id は Cloudflare で D1 を作成後に書き換える（docs/DEPLOY.md 参照）
+    { "binding": "DB", "database_name": "nori2023-db", "database_id": "00000000-0000-0000-0000-000000000000", "migrations_dir": "migrations" }
+  ],
+  // 画像は D1 に保存（カード登録不要）。R2 を使う場合だけ下記のコメントを外す（docs/DEPLOY.md 参照）
+  // "r2_buckets": [
+  //   { "binding": "MEDIA", "bucket_name": "nori2023-media" },
+  //   { "binding": "PRIVATE", "bucket_name": "nori2023-private" }
+  // ],
+  "vars": {
+    "SITE_URL": "https://nori2023-leather.example.workers.dev",
+    // Cloudflare Access の設定値（docs/DEPLOY.md 参照）。未設定なら管理画面は誰も入れない
+    "ACCESS_TEAM_DOMAIN": "",
+    "ACCESS_AUD": "",
+    // 管理者として許可するメールアドレス（カンマ区切り）
+    "ADMIN_EMAILS": ""
+  },
+  // 6時間ごとに Instagram の最新投稿を取得
+  "triggers": { "crons": ["0 */6 * * *"] },
+  "observability": { "enabled": true }
+}
