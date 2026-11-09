@@ -5,6 +5,9 @@
   "main": "src/index.tsx",
   "compatibility_date": "2026-10-01",
   "compatibility_flags": ["nodejs_compat"],
+  // workers.dev のアドレス（https://nori2023-leather.mpr-kiyo.workers.dev）で公開する
+  "workers_dev": true,
+  "preview_urls": false,
   // 静的ファイル（CSS・JS・ブランド画像）は Worker を通さず配信（無料・無制限）
   "assets": { "directory": "./public", "binding": "ASSETS" },
   "d1_databases": [
@@ -17,7 +20,7 @@
   //   { "binding": "PRIVATE", "bucket_name": "nori2023-private" }
   // ],
   "vars": {
-    "SITE_URL": "https://nori2023-leather.example.workers.dev",
+    "SITE_URL": "https://nori2023-leather.mpr-kiyo.workers.dev",
     // Cloudflare Access の設定値（docs/DEPLOY.md 参照）。未設定なら管理画面は誰も入れない
     "ACCESS_TEAM_DOMAIN": "",
     "ACCESS_AUD": "",
