@@ -8,7 +8,8 @@ declare(strict_types=1);
  *  - セッションCookieは HttpOnly / SameSite=Lax / HTTPS時 Secure、パスは設置フォルダ
  *  - 管理画面の変更操作はすべて CSRF トークンを確認
  */
-const LOGIN_MAX_FAILS = 5;
+const LOGIN_MAX_FAILS = 5;          // 同じIPからの失敗回数の上限
+const LOGIN_MAX_FAILS_EMAIL = 10;   // 同じメールアドレスへの失敗回数の上限（IPを変える攻撃対策）
 const LOGIN_WINDOW_MIN = 15;
 const SESSION_IDLE_SEC = 60 * 60 * 8;
 
@@ -67,13 +68,23 @@ function verify_csrf(): void
     }
 }
 
-function login_locked(string $ip): bool
+function login_locked(string $ip, string $email = ''): bool
 {
-    $fails = (int) db_value(
+    $byIp = (int) db_value(
         'SELECT COUNT(*) FROM login_attempts WHERE ip = ? AND succeeded = 0 AND attempted_at > (NOW() - INTERVAL ? MINUTE)',
         [$ip, LOGIN_WINDOW_MIN],
     );
-    return $fails >= LOGIN_MAX_FAILS;
+    if ($byIp >= LOGIN_MAX_FAILS) {
+        return true;
+    }
+    if ($email === '') {
+        return false;
+    }
+    $byEmail = (int) db_value(
+        'SELECT COUNT(*) FROM login_attempts WHERE email = ? AND succeeded = 0 AND attempted_at > (NOW() - INTERVAL ? MINUTE)',
+        [mb_strtolower(trim($email)), LOGIN_WINDOW_MIN],
+    );
+    return $byEmail >= LOGIN_MAX_FAILS_EMAIL;
 }
 
 function attempt_login(string $email, string $password): bool

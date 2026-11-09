@@ -57,7 +57,9 @@ InnoDB のトランザクション内で `SELECT ... FROM products WHERE id = ? 
 - `uploads/` は JPEG/WebP 以外を 403、PHP 等のハンドラーを無効化
 - 画像：マジックナンバーと `getimagesizefromstring` で検証、保存名はサーバー側で採番
 - SQL はすべてプリペアドステートメント、HTML 出力はすべてエスケープ
-- 管理画面：パスワード bcrypt、ログイン試行制限、セッション固定対策、Cookie は HttpOnly / SameSite=Lax / HTTPS時 Secure、全 POST で CSRF トークン＋Origin 確認、`X-Frame-Options: DENY`、`Cache-Control: no-store`
+- 常に https で表示（http は https へ転送）。HSTS は mpr-shop.com 全体に効くため送らない
+- Content-Security-Policy：スクリプトは自サイトのみ、外部は Google Fonts だけ許可（インラインスクリプト不使用）
+- 管理画面：パスワード bcrypt、ログイン試行制限（同じIPから5回／同じメールアドレスへ10回の失敗で15分ロック）、セッション固定対策、Cookie は HttpOnly / SameSite=Lax / HTTPS時 Secure、全 POST で CSRF トークン＋Origin 確認、`X-Frame-Options: DENY`、`Cache-Control: no-store`
 - 初回設定は設置キー必須・設定後は無効
 - 操作履歴（audit_logs）
 

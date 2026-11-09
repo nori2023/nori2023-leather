@@ -68,7 +68,7 @@ function admin_login(): void
     if (is_post()) {
         verify_csrf();
         $email = post_str('email', 255);
-        if (login_locked(client_ip())) {
+        if (login_locked(client_ip(), $email)) {
             $error = 'ログインの失敗が続いたため、しばらくログインできません。15分ほど待ってからお試しください。';
         } elseif (attempt_login($email, (string) ($_POST['password'] ?? ''))) {
             redirect('/admin');

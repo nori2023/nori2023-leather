@@ -7,6 +7,11 @@ DirectoryIndex index.php
   # 設置フォルダが /nori2023/ 以外の場合はここを書き換える
   RewriteBase /nori2023/
 
+  # 常に https で表示する（エックスサーバー推奨の書き方。手元の確認環境 localhost は除外）
+  RewriteCond %{HTTPS} !on
+  RewriteCond %{HTTP_HOST} !^(localhost|127\.0\.0\.1)(:\d+)?$
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+
   # 公開してはいけないフォルダ・ファイル
   RewriteRule ^app(/|$) - [F,L]
   RewriteRule (^|/)\. - [F,L]
