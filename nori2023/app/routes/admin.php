@@ -622,10 +622,12 @@ function admin_instagram(): void
 {
     $t = ig_token();
     $s = get_setting('instagram.sync', []);
+    $acc = get_setting('instagram.account', []);
     $posts = db_all('SELECT * FROM instagram_posts ORDER BY posted_at DESC LIMIT 12');
     $h = '<div class="space-y-6"><section class="' . A_CARD . '"><h2 class="font-serif text-lg text-leather">状態</h2>'
         . '<dl class="mt-3 grid grid-cols-[8rem_1fr] gap-y-2 text-sm">'
-        . '<dt class="text-muted">アクセストークン</dt><dd>' . ($t ? '登録済み（有効期限 ' . e(format_datetime($t['expires_at'])) . '・自動更新）' : '未登録') . '</dd>'
+        . '<dt class="text-muted">アクセストークン</dt><dd>' . ($t ? ($t['expires_at'] ? '登録済み（有効期限 ' . e(format_datetime($t['expires_at'])) . '・自動更新）' : '登録済み（有効期限なし）') : '未登録') . '</dd>'
+        . (!empty($acc['id']) ? '<dt class="text-muted">アカウント</dt><dd>' . e($acc['username'] ? '@' . $acc['username'] : '') . ' <span class="text-muted">ID ' . e($acc['id']) . '</span></dd>' : '')
         . '<dt class="text-muted">最終更新</dt><dd>' . (!empty($s['lastSyncAt']) ? e(format_datetime($s['lastSyncAt'])) : 'まだ取得していません') . '</dd>'
         . (!empty($s['lastError']) ? '<dt class="text-muted">エラー</dt><dd class="text-red-700">' . e($s['lastError']) . '</dd>' : '')
         . '</dl><p class="mt-3 text-xs text-muted">6時間ごとに最新の投稿を取得し、トップページに6件表示します。</p>';
@@ -634,8 +636,9 @@ function admin_instagram(): void
     }
     $h .= '</section><form method="post" action="' . e(url('/admin/instagram/token')) . '" class="' . A_CARD . ' space-y-3">' . csrf_field()
         . '<h2 class="font-serif text-lg text-leather">' . ($t ? 'トークンを登録し直す' : 'アクセストークンの登録') . '</h2>'
-        . '<p class="text-sm leading-6 text-muted">Meta for Developers のアプリ画面「Instagram → API setup with Instagram business login」で発行したアクセストークンを貼り付けてください。手順はマニュアルにあります。トークンは画面には再表示しません。</p>'
-        . '<input name="token" type="password" autocomplete="off" required minlength="20" class="' . A_INPUT . '" placeholder="IGAA…" aria-label="アクセストークン">'
+        . '<p class="text-sm leading-6 text-muted">Meta for Developers のアプリ画面「ユースケース → カスタマイズ → API setup with Unified login」で発行したアクセストークン（EAA… で始まる文字列）を貼り付けてください。トークンは画面には再表示しません。</p>'
+        . '<input name="token" type="password" autocomplete="off" required minlength="20" class="' . A_INPUT . '" placeholder="EAA…" aria-label="アクセストークン">'
+        . admin_field('InstagramアカウントID（通常は空欄）', '<input id="ig_user_id" name="ig_user_id" inputmode="numeric" pattern="[0-9]*" maxlength="30" class="' . A_INPUT . '">', 'ig_user_id', '自動で見つからないときだけ、数字のIDを入力します')
         . '<button class="' . A_BTN_GHOST . '">登録して取得する</button></form>';
     if ($posts) {
         $h .= '<section class="' . A_CARD . '"><h2 class="font-serif text-lg text-leather">取得済みの投稿</h2><ul class="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6">';
@@ -655,6 +658,8 @@ function admin_instagram_token(): void
         redirect('/admin/instagram');
     }
     ig_save_token($token);
+    $igId = preg_replace('/\D/', '', post_str('ig_user_id', 30));
+    set_setting('instagram.account', $igId !== '' ? ['id' => $igId, 'username' => null, 'manual' => true] : [], current_admin()['email']);
     audit('instagram.token_set');
     $r = ig_sync();
     redirect($r['ok'] ? '/admin/instagram?notice=synced' : '/admin/instagram');

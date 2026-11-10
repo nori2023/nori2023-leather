@@ -2,12 +2,14 @@
 declare(strict_types=1);
 
 /**
- * Instagram 最新投稿の同期（Instagram API with Instagram Login）
- *  - 長期アクセストークン（60日）は DB に保存し、残り30日を切ったら自動更新
+ * Instagram 最新投稿の同期
+ *  - 新しいMetaアプリ：Unified login のシステムユーザートークン（EAA…、期限なし）→ graph.facebook.com
+ *  - 旧来のアプリ：Instagram Login の長期トークン（IGAA…、60日）→ graph.instagram.com。残り30日を切ったら自動更新
  *  - 画像は Instagram 側URLに有効期限があるため uploads/instagram/ にコピーして表示
  *  - 実行タイミング：cron（任意）／トップページ表示時に6時間以上経っていれば裏で実行／管理画面の「今すぐ更新」
  */
 const IG_API = 'https://graph.instagram.com';
+const IG_FB_API = 'https://graph.facebook.com/v25.0';
 const IG_KEEP = 12;
 const IG_INTERVAL_SEC = 6 * 3600;
 
@@ -36,9 +38,15 @@ function ig_token(): ?array
     return db_one("SELECT token, expires_at, refreshed_at FROM integration_tokens WHERE name = 'instagram'");
 }
 
+/** Unified login（Facebook側）のトークンか */
+function ig_is_unified(string $token): bool
+{
+    return str_starts_with($token, 'EAA');
+}
+
 function ig_save_token(string $token, ?int $expiresInSec = null): void
 {
-    $expires = date('Y-m-d H:i:s', time() + ($expiresInSec ?? 60 * 24 * 3600));
+    $expires = ig_is_unified($token) ? null : date('Y-m-d H:i:s', time() + ($expiresInSec ?? 60 * 24 * 3600));
     db_exec(
         "INSERT INTO integration_tokens (name, token, expires_at, refreshed_at) VALUES ('instagram', ?, ?, NOW())
          ON DUPLICATE KEY UPDATE token = VALUES(token), expires_at = VALUES(expires_at), refreshed_at = NOW()",
@@ -48,6 +56,9 @@ function ig_save_token(string $token, ?int $expiresInSec = null): void
 
 function ig_refresh_if_needed(array $t): string
 {
+    if (ig_is_unified($t['token'])) {
+        return $t['token']; // 期限なし
+    }
     $expires = $t['expires_at'] ? strtotime($t['expires_at']) : 0;
     $age = time() - (int) strtotime($t['refreshed_at']);
     if ($expires - time() > 30 * 24 * 3600 || $age < 24 * 3600) {
@@ -62,6 +73,42 @@ function ig_refresh_if_needed(array $t): string
     return $t['token'];
 }
 
+function ig_api_error(array $res): string
+{
+    $msg = json_decode($res['body'], true)['error']['message'] ?? ($res['error'] ?: 'HTTP ' . $res['code']);
+    return 'Instagram API: ' . mb_substr((string) $msg, 0, 200);
+}
+
+/** 投稿一覧のURL。Unified login はアカウントIDが必要なので、設定値か assigned_instagram_accounts から求める */
+function ig_media_endpoint(string $token): string
+{
+    if (!ig_is_unified($token)) {
+        return IG_API . '/me/media';
+    }
+    $acc = get_setting('instagram.account', []);
+    $id = preg_replace('/\D/', '', (string) ($acc['id'] ?? ''));
+    if ($id === '') {
+        $res = ig_http_get(IG_FB_API . '/me/assigned_instagram_accounts?fields=id,username&access_token=' . rawurlencode($token));
+        if ($res['code'] !== 200) {
+            throw new RuntimeException(ig_api_error($res) . '（InstagramアカウントIDを入力すると解決する場合があります）');
+        }
+        $list = json_decode($res['body'], true)['data'] ?? [];
+        $pick = null;
+        foreach ($list as $a) {
+            if (strcasecmp((string) ($a['username'] ?? ''), ltrim(INSTAGRAM_HANDLE, '@')) === 0) {
+                $pick = $a;
+            }
+        }
+        $pick ??= $list[0] ?? null;
+        $id = preg_replace('/\D/', '', (string) ($pick['id'] ?? ''));
+        if ($id === '') {
+            throw new RuntimeException('このトークンで見られるInstagramアカウントが見つかりませんでした。トークンを発行したアカウントを確認してください。');
+        }
+        set_setting('instagram.account', ['id' => $id, 'username' => $pick['username'] ?? null, 'manual' => false], 'system');
+    }
+    return IG_FB_API . '/' . $id . '/media';
+}
+
 function ig_sync(): array
 {
     $t = ig_token();
@@ -71,10 +118,9 @@ function ig_sync(): array
     try {
         $token = ig_refresh_if_needed($t);
         $fields = 'id,caption,media_type,media_url,thumbnail_url,permalink,timestamp';
-        $res = ig_http_get(IG_API . '/me/media?fields=' . $fields . '&limit=' . IG_KEEP . '&access_token=' . rawurlencode($token));
+        $res = ig_http_get(ig_media_endpoint($token) . '?fields=' . $fields . '&limit=' . IG_KEEP . '&access_token=' . rawurlencode($token));
         if ($res['code'] !== 200) {
-            $msg = json_decode($res['body'], true)['error']['message'] ?? ($res['error'] ?: 'HTTP ' . $res['code']);
-            throw new RuntimeException('Instagram API: ' . mb_substr((string) $msg, 0, 200));
+            throw new RuntimeException(ig_api_error($res));
         }
         $data = json_decode($res['body'], true)['data'] ?? [];
         $existing = [];
