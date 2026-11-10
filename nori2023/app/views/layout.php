@@ -62,11 +62,12 @@ function render_page(array $meta, string $body, int $status = 200): void
 
 function site_header(): string
 {
-    $h = '<header class="sticky top-0 z-30 border-b border-line/70 bg-ivory/95"><div class="mx-auto flex h-16 max-w-6xl items-center justify-between pl-5 pr-2 lg:h-20 lg:px-5">'
-        . '<a href="' . e(url('/')) . '" class="flex flex-col leading-none" aria-label="' . e(SITE_NAME) . ' トップへ">'
-        . '<span class="font-serif text-[1.02rem] font-semibold tracking-[0.12em] text-leather sm:text-lg">' . e(SITE_NAME) . '</span>'
-        . '<span class="mt-1 text-[0.62rem] tracking-[0.4em] text-camel">' . e(strtoupper(SITE_BRAND)) . '</span></a>'
-        . '<nav aria-label="メインメニュー" class="hidden lg:block"><ul class="flex items-center gap-7 text-[0.85rem] tracking-[0.08em]">';
+    $h = '<header class="sticky top-0 z-30 border-b border-line/70 bg-ivory/95"><div class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-6 pl-5 pr-2 lg:h-20 lg:px-5">'
+        . '<a href="' . e(url('/')) . '" class="flex items-center gap-2.5" aria-label="' . e(SITE_NAME) . ' トップへ">'
+        . '<img src="' . e(asset('/images/brand/logo-mark.jpg')) . '" alt="" width="44" height="44" class="h-10 w-10 shrink-0 rounded-full border border-line/80 object-cover shadow-sm lg:h-12 lg:w-12">'
+        . '<span class="flex flex-col leading-none"><span class="whitespace-nowrap font-serif text-[0.98rem] font-semibold tracking-[0.1em] text-leather sm:text-lg lg:text-base xl:text-lg">' . e(SITE_NAME) . '</span>'
+        . '<span class="mt-1 text-[0.62rem] tracking-[0.4em] text-camel">' . e(strtoupper(SITE_BRAND)) . '</span></span></a>'
+        . '<nav aria-label="メインメニュー" class="hidden lg:block"><ul class="flex items-center gap-3 whitespace-nowrap text-[0.8rem] tracking-[0.04em] xl:gap-7 xl:text-[0.85rem] xl:tracking-[0.08em]">';
     foreach (MAIN_NAV as [$path, $label]) {
         $h .= '<li><a href="' . e(url($path)) . '" class="text-charcoal transition-colors hover:text-camel">' . e($label) . '</a></li>';
     }
