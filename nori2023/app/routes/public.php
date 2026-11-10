@@ -304,6 +304,7 @@ function purchase_area(array $p): string
     if (!$enabled) {
         $h .= '<p class="mt-3 text-center text-xs text-muted">欲しい方は <a href="' . e(url('/contact')) . '" class="text-leather underline underline-offset-4">お問い合わせ</a> から声かけてつかぁさい。</p>';
     }
+    $h .= '<p class="mt-3 text-center text-xs text-muted">' . e(MAKER_SELLER_TEXT) . '</p>';
     return $h . '</div>';
 }
 

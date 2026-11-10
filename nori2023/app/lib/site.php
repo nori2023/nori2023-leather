@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 const SITE_NAME = 'おっさんのレザークラフト';
 const SITE_BRAND = 'Nori2023';
+/** 制作者と販売者の表記（販売者はゼウスの契約者・特定商取引法の販売業者と一致させる） */
+const MAKER_NAME = 'Nori2023';
+const SELLER_NAME = '前川印刷株式会社';
+const MAKER_SELLER_TEXT = '制作：' . MAKER_NAME . ' ／ 販売：' . SELLER_NAME;
 const SITE_CATCH = 'おっさんが、ひとつひとつ作っとります。';
 const SITE_SUB = '使やぁ使うほど、ええ味が出てくる革小物じゃけぇ。';
 const SITE_DESCRIPTION = '「おっさんが、ひとつひとつ作っとります。」手仕事で仕立てた1点ものの革小物と、名前やロゴを刻むヌメ革のオリジナル名刺ケース。広島のNori2023（おっさんのレザークラフト）公式サイトじゃけぇ。';

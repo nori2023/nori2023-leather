@@ -100,7 +100,8 @@ function site_footer(): string
         $h .= '</ul>';
     }
     $h .= '</div></div><div class="stitch mt-12 opacity-40" aria-hidden="true"></div>'
-        . '<p class="mt-6 text-center text-xs tracking-[0.15em] text-ivory/50">© ' . e(SITE_BRAND) . ' ' . e(SITE_NAME) . '</p></div></footer>';
+        . '<p class="mt-6 text-center text-xs tracking-[0.1em] text-ivory/70">' . e(MAKER_SELLER_TEXT) . '</p>'
+        . '<p class="mt-2 text-center text-xs tracking-[0.15em] text-ivory/50">© ' . e(SITE_BRAND) . ' ' . e(SITE_NAME) . '</p></div></footer>';
     return $h;
 }
 
