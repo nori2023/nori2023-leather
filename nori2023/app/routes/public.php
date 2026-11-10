@@ -3,15 +3,14 @@ declare(strict_types=1);
 
 require APP_DIR . '/views/components.php';
 require APP_DIR . '/views/layout.php';
+require APP_DIR . '/routes/public_content.php';
 
 const IG_EMPTY_NOTE = '新作のお知らせは Instagram（@nori2023_）でしよります。';
 
 const COMING_SOON = [
     '/gallery' => ['SOLD OUT作品集', null],
     '/custom-cardcase' => ['オリジナル名刺入れ・カードケース', '名入れの相談は、お問い合わせからでも受けとりますけぇ。'],
-    '/leather-aging' => ['革の経年変化', null],
     '/leather-care' => ['革のお手入れ', null],
-    '/workshop' => ['ワークショップ', '開催のお知らせは Instagram（@nori2023_）でもしとります。'],
     '/order' => ['オーダーメイド相談', null],
     '/contact' => ['お問い合わせ', '急ぎの方は Instagram（@nori2023_）のDMから連絡してつかぁさい。'],
     '/legal/privacy' => ['プライバシーポリシー', null],
@@ -30,6 +29,8 @@ function route_public(string $path): void
         $path === '/shop' => page_shop(),
         (bool) preg_match('#^/shop/([a-z0-9-]{1,80})$#', $path, $m) => page_product($m[1]),
         $path === '/about' => page_about(),
+        $path === '/workshop' => page_workshop(),
+        $path === '/leather-aging' => page_leather_aging(),
         $path === '/legal/tokushoho' => page_tokushoho(),
         $path === '/legal/returns' => page_returns(),
         isset(COMING_SOON[$path]) => page_coming_soon($path),

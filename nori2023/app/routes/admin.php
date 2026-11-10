@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require APP_DIR . '/views/admin_layout.php';
+require APP_DIR . '/routes/admin_content.php';
 
 function route_admin(string $path): void
 {
@@ -42,6 +43,14 @@ function route_admin(string $path): void
         $path === '/admin/settings' => $post ? admin_settings_save() : admin_settings(),
         $path === '/admin/settings/hero-image' && $post => admin_hero_upload(),
         $path === '/admin/settings/hero-image/reset' && $post => admin_hero_reset(),
+        $path === '/admin/workshops' => $post ? admin_workshop_save(null) : admin_workshops(),
+        $path === '/admin/workshops/new' => admin_workshop_form(null),
+        (bool) preg_match('#^/admin/workshops/([0-9a-f-]{36})$#', $path, $m) => $post ? admin_workshop_save($m[1]) : admin_workshop_form($m[1]),
+        (bool) preg_match('#^/admin/workshops/([0-9a-f-]{36})/delete$#', $path, $m) && $post => admin_workshop_delete($m[1]),
+        $path === '/admin/aging' => $post ? admin_aging_save(null) : admin_aging(),
+        $path === '/admin/aging/new' => admin_aging_form(null),
+        (bool) preg_match('#^/admin/aging/([0-9a-f-]{36})$#', $path, $m) => $post ? admin_aging_save($m[1]) : admin_aging_form($m[1]),
+        (bool) preg_match('#^/admin/aging/([0-9a-f-]{36})/delete$#', $path, $m) && $post => admin_aging_delete($m[1]),
         $path === '/admin/instagram' => admin_instagram(),
         $path === '/admin/instagram/token' && $post => admin_instagram_token(),
         $path === '/admin/instagram/sync' && $post => admin_instagram_sync(),

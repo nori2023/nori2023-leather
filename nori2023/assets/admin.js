@@ -119,6 +119,35 @@
     }
   }
 
+  // ---- 写真つきフォーム（ワークショップ・経年変化）：写真をブラウザで縮小してから送信
+  document.querySelectorAll("form[data-resize-form]").forEach(function (form) {
+    var st = form.querySelector("[data-form-status]");
+    var busy = false;
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (busy) return;
+      busy = true;
+      var btn = form.querySelector("button");
+      if (btn) btn.disabled = true;
+      if (st) st.textContent = "保存しよります…";
+      var fd = new FormData(form);
+      var jobs = [];
+      form.querySelectorAll("input[type=file][data-resize]").forEach(function (inp) {
+        fd.delete(inp.name);
+        var f = inp.files[0];
+        if (!f) return;
+        jobs.push(resize(f, 1600, 0.85).then(function (r) { fd.append(inp.name, r.blob, inp.name + ".jpg"); }));
+      });
+      Promise.all(jobs).then(function () { return post(form.getAttribute("action").slice(BASE.length), fd); })
+        .then(function (j) { location.href = j.redirect || location.href; })
+        .catch(function (err) {
+          busy = false;
+          if (btn) btn.disabled = false;
+          if (st) { st.textContent = "保存できませんでした：" + err.message; st.className = "text-sm text-red-700"; }
+        });
+    });
+  });
+
   // ---- トップのメイン画像
   var hero = document.querySelector("[data-hero-input]");
   if (hero) {

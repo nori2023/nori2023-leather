@@ -13,11 +13,11 @@ const SELLER_INFO = [
     'postal'   => '〒731-0135',
     'address'  => '広島県広島市安佐南区長束1-1-14',
     'tel'      => '082-875-2113',
-    'tel_hours'=> null,           // 電話受付時間（未定）
+    'tel_hours'=> '平日 9:00〜17:00',
     'email'    => 'kiyokawa@mpr.co.jp',
-    'delivery' => null,           // お届け時期（未定）
-    'report_days' => null,        // 不良品のご連絡期限（未定）
-    'cancel'   => null,           // ご注文後のキャンセル（未定）
+    'delivery' => 'ご入金確認後、3営業日以内に発送いたします。',
+    'report_days' => 7,           // 不良品のご連絡期限（商品到着後の日数）
+    'cancel'   => '発送前であればキャンセルを承ります。メールまたはお電話でご連絡ください。発送後のキャンセルはお受けできません。',
 ];
 const LEGAL_TBD = '販売開始までに記載します';
 const MAKER_SELLER_TEXT = '制作：' . MAKER_NAME . ' ／ 販売：' . SELLER_NAME;
