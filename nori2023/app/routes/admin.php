@@ -91,7 +91,7 @@ function admin_login(): void
     $installed = query_str('installed', 2) === '1'
         ? '<p class="mb-4 rounded border border-green-700/30 bg-green-50 px-4 py-3 text-sm text-green-900">初回設定が完了しました。登録したメールアドレスとパスワードでログインしてください。</p>'
         : '';
-    $body = '<div class="mx-auto max-w-sm">' . $installed . '<form method="post" class="' . A_CARD . ' space-y-4">' . csrf_field()
+    $body = '<div class="mx-auto max-w-sm">' . $installed . '<form method="post" data-autofill class="' . A_CARD . ' space-y-4">' . csrf_field()
         . admin_field('メールアドレス', '<input id="email" name="email" type="email" required autocomplete="username" value="' . e($email) . '" class="' . A_INPUT . '">', 'email')
         . admin_field('パスワード', '<input id="password" name="password" type="password" required autocomplete="current-password" class="' . A_INPUT . '">', 'password')
         . '<button class="' . A_BTN_PRIMARY . ' w-full">ログイン</button></form></div>';
@@ -208,7 +208,7 @@ function admin_product_form(?array $product, ?array $values = null, ?string $err
         ? '<p class="mt-1 text-xs text-red-700">' . e(PHOTO_RULE_TEXT) . '（現在' . count($product['images']) . '枚）</p>' : '';
     $action = $isNew ? url('/admin/products') : url('/admin/products/' . $product['id']);
 
-    $h .= '<form method="post" action="' . e($action) . '" class="' . A_CARD . ' mt-5 grid gap-5 sm:grid-cols-2">' . csrf_field()
+    $h .= '<form method="post" action="' . e($action) . '" autocomplete="off" class="' . A_CARD . ' mt-5 grid gap-5 sm:grid-cols-2">' . csrf_field()
         . '<h2 class="font-serif text-lg text-leather sm:col-span-2">商品情報</h2>'
         . admin_field('商品管理番号 *', '<input id="code" name="code" required maxlength="40" value="' . $val('code') . '" class="' . A_INPUT . '">', 'code', '例：KH-0001（ほかの商品と重複しない番号）')
         . admin_field('商品名 *', '<input id="name" name="name" required maxlength="120" value="' . $val('name') . '" class="' . A_INPUT . '">', 'name')

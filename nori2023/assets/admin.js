@@ -6,6 +6,18 @@
   var BASE = (document.querySelector('meta[name="base-path"]') || {}).content || "";
   var CSRF = (document.querySelector('meta[name="csrf-token"]') || {}).content || "";
 
+  // スマホの「連絡先を自動入力」などを出さない（ログイン・パスワード欄は除く）
+  document.querySelectorAll("form:not([data-autofill]) input, form:not([data-autofill]) textarea").forEach(function (el) {
+    var t = (el.getAttribute("type") || "text").toLowerCase();
+    if (t === "password" || t === "email" || t === "hidden" || t === "file" || t === "checkbox" || t === "radio") return;
+    el.setAttribute("autocomplete", "off");
+    if (t === "url" || t === "number" || /code|sku|slug|url|_id$/.test(el.name)) {
+      el.setAttribute("autocorrect", "off");
+      el.setAttribute("autocapitalize", "off");
+      el.setAttribute("spellcheck", "false");
+    }
+  });
+
   // 削除などの確認
   document.querySelectorAll("form[data-confirm]").forEach(function (f) {
     f.addEventListener("submit", function (e) { if (!window.confirm(f.dataset.confirm)) e.preventDefault(); });
