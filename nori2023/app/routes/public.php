@@ -8,7 +8,6 @@ require APP_DIR . '/routes/public_content.php';
 const IG_EMPTY_NOTE = '新作のお知らせは Instagram（@nori2023_）でしよります。';
 
 const COMING_SOON = [
-    '/gallery' => ['SOLD OUT作品集', null],
     '/custom-cardcase' => ['オリジナル名刺入れ・カードケース', '名入れの相談は、お問い合わせからでも受けとりますけぇ。'],
     '/leather-care' => ['革のお手入れ', null],
     '/order' => ['オーダーメイド相談', null],
@@ -29,6 +28,7 @@ function route_public(string $path): void
         $path === '/shop' => page_shop(),
         (bool) preg_match('#^/shop/([a-z0-9-]{1,80})$#', $path, $m) => page_product($m[1]),
         $path === '/about' => page_about(),
+        $path === '/gallery' => page_gallery(),
         $path === '/workshop' => page_workshop(),
         $path === '/leather-aging' => page_leather_aging(),
         $path === '/legal/tokushoho' => page_tokushoho(),
@@ -160,6 +160,21 @@ function feature_card(string $path, string $eyebrow, string $title, string $body
 }
 
 // ------------------------------------------------------------------ 商品一覧
+function page_gallery(): void
+{
+    $products = list_public_products(['sold_out'], null, 300);
+    $body = breadcrumbs([['/gallery', 'SOLD OUT作品集']])
+        . '<div class="mx-auto max-w-6xl px-5 pb-24 pt-10">'
+        . section_heading('SOLD OUT作品集', 'Sold out gallery', 'もう旅立っていった作品たちです。買うてくれんさって、ほんまにありがとうございました。')
+        . product_grid($products, empty_state('作品集は、まだ準備しよります', IG_EMPTY_NOTE))
+        . '<div class="mt-16 flex flex-wrap justify-center gap-3">' . button_link('/shop', '販売中の作品を見る') . button_link('/custom-cardcase', '自分だけの名刺入れ、作らん？', 'outline') . '</div></div>';
+    render_page([
+        'title' => 'SOLD OUT作品集',
+        'path' => '/gallery',
+        'description' => 'これまでに売れた、おっさんの1点ものの革小物の作品集です。',
+    ], $body);
+}
+
 function page_shop(): void
 {
     $categories = list_categories();
