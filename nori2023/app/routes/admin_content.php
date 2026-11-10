@@ -313,3 +313,96 @@ function admin_aging_delete(string $id): void
     }
     redirect('/admin/aging?notice=deleted');
 }
+
+// ================================================================== これまでに作ったもん（トップページの写真）
+function admin_works(?string $error = null): void
+{
+    $rows = db_all('SELECT * FROM works_photos ORDER BY sort_order, created_at');
+    $h = '<form method="post" action="' . e(url('/admin/works')) . '" enctype="multipart/form-data" data-resize-form class="' . A_CARD . ' grid gap-4 sm:grid-cols-2">' . csrf_field()
+        . '<div class="sm:col-span-2"><h2 class="font-serif text-lg text-leather">写真を追加する</h2>'
+        . '<p class="mt-1 text-sm leading-6 text-muted">トップページの「これまでに作ったもんより」に並ぶ写真です。売り物ではない作品も載せられます。</p></div>'
+        . image_input('image', '写真 *', null, true, '縦長（4:5）に切り抜いて表示します')
+        . '<div class="space-y-4">' . admin_field('作品名 *', '<input id="caption" name="caption" required maxlength="100" class="' . A_INPUT . '">', 'caption', '例：コインケース（キャメル）')
+        . admin_field('写真の説明', '<input id="alt" name="alt" maxlength="200" class="' . A_INPUT . '">', 'alt', '例：キャメル色のコインケースを開いたところ（読み上げ用）') . '</div>'
+        . '<label class="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" name="first" value="1" checked> いちばん左（先頭）に出す</label>'
+        . '<div class="flex flex-wrap items-center gap-3 sm:col-span-2"><button class="' . A_BTN_PRIMARY . '">追加する</button><p data-form-status class="text-sm text-muted" aria-live="polite"></p></div></form>';
+
+    $h .= '<section class="mt-6"><h2 class="font-serif text-lg text-leather">登録済みの写真（' . count($rows) . '枚）</h2>'
+        . '<p class="mt-1 text-xs text-muted">上から順に、トップページの左から並びます。</p><ul class="mt-3 space-y-3">';
+    $last = count($rows) - 1;
+    foreach ($rows as $i => $w) {
+        $src = $w['image_key'] ? upload_url($w['image_key']) : url($w['static_path']);
+        $btn = static fn (string $act, string $label, string $aria, bool $disabled = false): string => '<form method="post" action="' . e(url('/admin/works/' . $w['id'] . '/' . $act)) . '">' . csrf_field()
+            . '<button class="inline-flex min-h-10 min-w-10 items-center justify-center rounded border border-line bg-white px-2 text-sm disabled:opacity-30" aria-label="' . e($aria) . '"' . ($disabled ? ' disabled' : '') . '>' . $label . '</button></form>';
+        $h .= '<li class="' . A_CARD . ' flex gap-3 !p-3' . ($w['is_published'] ? '' : ' opacity-60') . '">'
+            . '<img src="' . e($src) . '" alt="" class="h-24 w-20 shrink-0 rounded object-cover" loading="lazy">'
+            . '<div class="min-w-0 flex-1 space-y-2"><form method="post" action="' . e(url('/admin/works/' . $w['id'])) . '" class="space-y-2">' . csrf_field()
+            . '<input name="caption" value="' . e($w['caption']) . '" maxlength="100" required aria-label="作品名" class="' . A_INPUT . ' !mt-0">'
+            . '<div class="flex items-center gap-3"><label class="flex min-h-10 items-center gap-1 text-sm"><input type="checkbox" name="is_published" value="1"' . ($w['is_published'] ? ' checked' : '') . '> 公開</label>'
+            . '<button class="' . A_BTN_GHOST . ' !min-h-10 !px-3 text-sm">保存</button></div></form>'
+            . '<div class="flex flex-wrap gap-2">' . $btn('up', '↑', 'ひとつ上へ', $i === 0) . $btn('down', '↓', 'ひとつ下へ', $i === $last)
+            . '<form method="post" action="' . e(url('/admin/works/' . $w['id'] . '/delete')) . '" data-confirm="この写真をトップページから削除します。よろしいですか？" class="ml-auto">' . csrf_field()
+            . '<button class="min-h-10 px-2 text-sm text-red-700 underline">削除</button></form></div></div></li>';
+    }
+    $h .= '</ul></section>';
+    render_admin('これまでの作品', $h, $error);
+}
+
+function admin_works_add(): void
+{
+    $caption = post_str('caption', 100);
+    $alt = post_str('alt', 200);
+    $fail = static fn (string $m) => form_fail($m, static fn ($msg) => admin_works($msg));
+    if ($caption === '') {
+        $fail('作品名を入力してください。');
+    }
+    $key = save_optional_image('image', 'works');
+    if (!$key) {
+        $fail('写真を選んでください。');
+    }
+    $sort = ($_POST['first'] ?? '') === '1'
+        ? (int) db_value('SELECT COALESCE(MIN(sort_order), 10) FROM works_photos') - 10
+        : (int) db_value('SELECT COALESCE(MAX(sort_order), 0) FROM works_photos') + 10;
+    $id = uuid();
+    db_exec('INSERT INTO works_photos (id, image_key, caption, alt, sort_order, is_published) VALUES (?, ?, ?, ?, ?, 1)', [$id, $key, $caption, $alt ?: null, $sort]);
+    audit('works.add', $id, ['caption' => $caption]);
+    form_done('/admin/works?notice=saved');
+}
+
+function admin_works_update(string $id): void
+{
+    $caption = post_str('caption', 100);
+    if ($caption !== '') {
+        db_exec('UPDATE works_photos SET caption = ?, is_published = ? WHERE id = ?', [$caption, ($_POST['is_published'] ?? '') === '1' ? 1 : 0, $id]);
+        audit('works.update', $id, ['caption' => $caption]);
+    }
+    redirect('/admin/works?notice=saved');
+}
+
+function admin_works_move(string $id, int $dir): void
+{
+    $rows = db_all('SELECT id FROM works_photos ORDER BY sort_order, created_at');
+    $ids = array_column($rows, 'id');
+    $i = array_search($id, $ids, true);
+    $j = $i === false ? false : $i + $dir;
+    if ($i !== false && $j >= 0 && $j < count($ids)) {
+        [$ids[$i], $ids[$j]] = [$ids[$j], $ids[$i]];
+        foreach ($ids as $n => $rid) {
+            db_exec('UPDATE works_photos SET sort_order = ? WHERE id = ?', [($n + 1) * 10, $rid]);
+        }
+    }
+    redirect('/admin/works');
+}
+
+function admin_works_delete(string $id): void
+{
+    $w = db_one('SELECT * FROM works_photos WHERE id = ?', [$id]);
+    if ($w) {
+        db_exec('DELETE FROM works_photos WHERE id = ?', [$id]);
+        if ($w['image_key']) {
+            delete_uploads([$w['image_key']]);
+        }
+        audit('works.delete', $id, ['caption' => $w['caption']]);
+    }
+    redirect('/admin/works?notice=deleted');
+}

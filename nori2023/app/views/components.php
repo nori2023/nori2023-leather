@@ -133,12 +133,31 @@ function breadcrumbs(array $items): string
     return $h;
 }
 
+/** 「これまでに作ったもん」の写真（管理画面で管理。表がまだ無いときは初期の7枚） */
+function works_items(): array
+{
+    try {
+        $rows = db_all('SELECT * FROM works_photos WHERE is_published = 1 ORDER BY sort_order, created_at');
+    } catch (Throwable) {
+        return array_map(static fn ($w) => ['src' => url($w[0]), 'alt' => $w[1], 'caption' => $w[2]], WORKS);
+    }
+    return array_map(static fn ($r) => [
+        'src' => $r['image_key'] ? upload_url($r['image_key']) : url($r['static_path']),
+        'alt' => $r['alt'] ?: $r['caption'],
+        'caption' => $r['caption'],
+    ], $rows);
+}
+
 function works_strip(): string
 {
+    $items = works_items();
+    if (!$items) {
+        return '';
+    }
     $h = '<div class="-mx-5 overflow-x-auto px-5 pb-2 no-scrollbar"><ul class="flex w-max snap-x snap-mandatory gap-3 sm:gap-4">';
-    foreach (WORKS as [$src, $alt, $caption]) {
+    foreach ($items as ['src' => $src, 'alt' => $alt, 'caption' => $caption]) {
         $h .= '<li class="w-[58vw] max-w-[260px] shrink-0 snap-start"><div class="relative aspect-[4/5] overflow-hidden rounded-card bg-sand">'
-            . '<img src="' . e(url($src)) . '" alt="' . e($alt) . '" loading="lazy" decoding="async" data-zoom class="absolute inset-0 h-full w-full object-cover">'
+            . '<img src="' . e($src) . '" alt="' . e($alt) . '" loading="lazy" decoding="async" data-zoom class="absolute inset-0 h-full w-full object-cover">'
             . '</div><p class="mt-2 text-center text-xs text-muted">' . e($caption) . '</p></li>';
     }
     return $h . '</ul></div>';

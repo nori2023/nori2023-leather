@@ -6,6 +6,7 @@ const ADMIN_NAV = [
     ['/admin/products', '完成品（1点もの）'],
     ['/admin/categories', 'カテゴリー'],
     ['/admin/shipping', '送料設定'],
+    ['/admin/works', 'これまでの作品'],
     ['/admin/workshops', 'ワークショップ'],
     ['/admin/aging', '経年変化'],
     ['/admin/settings', 'ページ設定'],
