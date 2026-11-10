@@ -401,7 +401,7 @@ function page_tokushoho(): void
     }
     $rows = [
         '販売業者' => e($s['company']),
-        '運営統括責任者' => e($s['manager']),
+        '販売責任者' => e($s['manager']),
         '所在地' => e($s['postal']) . '<br>' . e($s['address']),
         '電話番号' => e($s['tel']) . '<br><span class="text-xs text-muted">受付時間：</span>' . legal_value($s['tel_hours'])
             . '<br><span class="text-xs text-muted">お問い合わせは、できるだけメールでお願いいたします。</span>',
@@ -409,7 +409,7 @@ function page_tokushoho(): void
         '制作' => e(MAKER_NAME) . '（商品の制作を担当しています）',
         '販売価格' => '各商品ページに税込価格で表示しています。',
         '商品代金以外の必要料金' => '送料（各商品ページおよび<a href="' . e(url('/legal/shipping')) . '" class="text-leather underline underline-offset-4">配送・送料</a>のページに表示します）',
-        'お支払い方法' => 'クレジットカード決済（' . e(LEGAL_TBD) . '）',
+        'お支払い方法' => 'クレジットカード決済（3Dセキュア本人認証に対応）',
         'お支払い時期' => 'ご注文確定時にお支払いが確定します。',
         '商品のお届け時期' => legal_value($s['delivery']),
         'ご注文後のキャンセル' => legal_value($s['cancel']),
