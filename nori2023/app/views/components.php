@@ -138,7 +138,7 @@ function works_strip(): string
     $h = '<div class="-mx-5 overflow-x-auto px-5 pb-2 no-scrollbar"><ul class="flex w-max snap-x snap-mandatory gap-3 sm:gap-4">';
     foreach (WORKS as [$src, $alt, $caption]) {
         $h .= '<li class="w-[58vw] max-w-[260px] shrink-0 snap-start"><div class="relative aspect-[4/5] overflow-hidden rounded-card bg-sand">'
-            . '<img src="' . e(url($src)) . '" alt="' . e($alt) . '" loading="lazy" decoding="async" class="absolute inset-0 h-full w-full object-cover">'
+            . '<img src="' . e(url($src)) . '" alt="' . e($alt) . '" loading="lazy" decoding="async" data-zoom class="absolute inset-0 h-full w-full object-cover">'
             . '</div><p class="mt-2 text-center text-xs text-muted">' . e($caption) . '</p></li>';
     }
     return $h . '</ul></div>';

@@ -71,6 +71,13 @@
   }
   .eyebrow { font-family: var(--font-sans); font-size: 0.72rem; letter-spacing: 0.32em; text-transform: uppercase; color: var(--color-camel); }
   .no-scrollbar { scrollbar-width: none; }
+  /* 写真の拡大表示 */
+  .zoom-dialog { margin: auto; width: 100vw; max-width: none; height: 100dvh; max-height: none; padding: 0; border: 0; background: rgba(28, 22, 18, 0.95); }
+  .zoom-dialog[open] { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .zoom-dialog::backdrop { background: rgba(28, 22, 18, 0.8); }
+  .zoom-dialog img { max-width: 94vw; max-height: 82dvh; object-fit: contain; }
+  .zoom-caption { margin-top: 0.75rem; padding: 0 1.25rem; max-width: 40rem; text-align: center; font-size: 0.8rem; color: rgba(247, 243, 235, 0.75); }
+  .zoom-close { position: absolute; top: 0.75rem; right: 0.75rem; width: 3rem; height: 3rem; font-size: 1.75rem; line-height: 1; color: var(--color-ivory); }
   .no-scrollbar::-webkit-scrollbar { display: none; }
   /* メニューを開いたときの×表示 */
   [data-menu-toggle][aria-expanded="true"] .menu-bar:nth-child(1) { transform: translateY(6px) rotate(45deg); }

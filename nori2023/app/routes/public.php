@@ -112,8 +112,8 @@ function page_home(): void
 
 <section class="bg-ink text-ivory">
   <div class="mx-auto grid max-w-6xl items-center gap-10 px-5 py-20 md:grid-cols-2 md:py-24">
-    <div class="relative aspect-[4/3] overflow-hidden rounded-card md:order-2">
-      <img src="{$h(e(url('/images/brand/cardcase-open.jpeg')))}" alt="ヌメ革の名刺ケースを開いた状態" loading="lazy" class="absolute inset-0 h-full w-full object-cover">
+    <div class="relative mx-auto aspect-[1055/1491] w-full max-w-sm overflow-hidden rounded-card md:order-2 md:max-w-md">
+      <img src="{$h(e(url('/images/brand/cardcase-gift.jpg')))}" alt="名前やロゴを刻印した、ヌメ革の封筒型名刺・カードケース" loading="lazy" data-zoom class="absolute inset-0 h-full w-full object-cover">
     </div>
     <div>
       <p class="eyebrow !text-gold">Custom card case</p>
@@ -127,7 +127,7 @@ function page_home(): void
 
 <section class="mx-auto grid max-w-6xl items-center gap-10 px-5 py-20 sm:py-24 md:grid-cols-[2fr_3fr]">
   <div class="relative mx-auto aspect-[3/4] w-full max-w-sm overflow-hidden rounded-card">
-    <img src="{$h(e(url('/images/site/maker-illustration.jpg')))}" alt="工房で革小物を縫う制作者のイラスト" loading="lazy" class="absolute inset-0 h-full w-full object-cover">
+    <img src="{$h(e(url('/images/site/maker-illustration.jpg')))}" alt="工房で革小物を縫う制作者のイラスト" loading="lazy" data-zoom class="absolute inset-0 h-full w-full object-cover">
   </div>
   <div>
     {$h(section_heading('作っとるんは、こがぁなおっさんです。', 'About the maker', null, 'left'))}
@@ -332,7 +332,7 @@ function page_about(): void
     $photos = '';
     foreach ($slots as [$label, $src, $alt]) {
         $photos .= '<li><div class="relative aspect-square overflow-hidden rounded-card">'
-            . ($src ? '<img src="' . e(url($src)) . '" alt="' . e($alt) . '" loading="lazy" class="absolute inset-0 h-full w-full object-cover">' : placeholder($label . '（準備中）'))
+            . ($src ? '<img src="' . e(url($src)) . '" alt="' . e($alt) . '" loading="lazy" data-zoom class="absolute inset-0 h-full w-full object-cover">' : placeholder($label . '（準備中）'))
             . '</div><p class="mt-2 text-center text-xs text-muted">' . e($label) . '</p></li>';
     }
     $body = breadcrumbs([['/about', '制作者紹介']]) . '<article class="pb-24">'
@@ -341,8 +341,8 @@ function page_about(): void
         . '<div class="stitch mx-auto mt-6 w-16" aria-hidden="true"></div></header>'
         . '<div class="mx-auto grid max-w-5xl gap-10 px-5 md:grid-cols-[2fr_3fr] md:items-start">'
         . '<div class="space-y-4 md:sticky md:top-28"><div class="relative aspect-[4/5] overflow-hidden rounded-card">'
-        . '<img src="' . e(url('/images/site/maker-illustration.jpg')) . '" alt="工房で革小物を縫う制作者のイラスト" class="absolute inset-0 h-full w-full object-cover"></div>'
-        . '<img src="' . e(url('/images/brand/nori2023-logo.jpeg')) . '" alt="革に刻印されたNori2023のロゴ" loading="lazy" class="mx-auto h-32 w-32 rounded-full border border-line object-cover"></div>'
+        . '<img src="' . e(url('/images/site/maker-illustration.jpg')) . '" alt="工房で革小物を縫う制作者のイラスト" data-zoom class="absolute inset-0 h-full w-full object-cover"></div>'
+        . '<img src="' . e(url('/images/brand/nori2023-logo.jpeg')) . '" alt="革に刻印されたNori2023のロゴ" loading="lazy" data-zoom class="mx-auto h-32 w-32 rounded-full border border-line object-cover"></div>'
         . '<div class="space-y-6 text-[1rem] leading-[2.15]">' . $paras
         . '<a href="' . e(INSTAGRAM_URL) . '" target="_blank" rel="noopener noreferrer" class="inline-flex min-h-12 items-center gap-2 text-leather underline-offset-4 hover:underline">'
         . instagram_icon() . ' Instagram：' . e(INSTAGRAM_HANDLE) . '</a></div></div>'

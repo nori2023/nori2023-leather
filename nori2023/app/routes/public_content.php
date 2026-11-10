@@ -21,7 +21,7 @@ function ws_time(array $w): string
 function ws_img(?string $key, string $alt, string $cls): string
 {
     return $key
-        ? '<img src="' . e(upload_url($key)) . '" alt="' . e($alt) . '" loading="lazy" class="' . $cls . ' object-cover">'
+        ? '<img src="' . e(upload_url($key)) . '" alt="' . e($alt) . '" loading="lazy" data-zoom class="' . $cls . ' object-cover">'
         : '<div class="' . $cls . '">' . placeholder('写真準備中') . '</div>';
 }
 

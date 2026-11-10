@@ -17,6 +17,37 @@
     document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !nav.hidden) setOpen(false); });
   }
 
+  // ---- 写真をタップ・クリックで大きく表示（data-zoom の付いた画像）
+  var zoomImgs = document.querySelectorAll("img[data-zoom]");
+  if (zoomImgs.length && window.HTMLDialogElement) {
+    var dlg = document.createElement("dialog");
+    dlg.className = "zoom-dialog";
+    dlg.setAttribute("aria-label", "写真の拡大表示");
+    dlg.innerHTML = '<button type="button" class="zoom-close" aria-label="閉じる">×</button><img alt=""><p class="zoom-caption"></p>';
+    document.body.appendChild(dlg);
+    var big = dlg.querySelector("img");
+    var cap = dlg.querySelector(".zoom-caption");
+    var openZoom = function (img) {
+      big.src = img.dataset.zoomSrc || img.currentSrc || img.src;
+      big.alt = img.alt || "";
+      cap.textContent = img.alt || "";
+      dlg.showModal();
+    };
+    dlg.addEventListener("click", function (e) { if (e.target !== big) dlg.close(); });
+    dlg.addEventListener("close", function () { big.removeAttribute("src"); });
+    zoomImgs.forEach(function (img) {
+      if (img.closest("a, button")) return;
+      img.classList.add("cursor-zoom-in");
+      img.setAttribute("tabindex", "0");
+      img.setAttribute("role", "button");
+      img.setAttribute("aria-label", (img.alt ? img.alt + "（" : "（") + "タップで拡大）");
+      img.addEventListener("click", function () { openZoom(img); });
+      img.addEventListener("keydown", function (e) {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openZoom(img); }
+      });
+    });
+  }
+
   // ---- 商品写真ギャラリー
   document.querySelectorAll("[data-gallery]").forEach(function (root) {
     var track = root.querySelector("[data-gallery-track]");
