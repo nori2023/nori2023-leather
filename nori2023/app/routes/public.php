@@ -14,11 +14,9 @@ const COMING_SOON = [
     '/workshop' => ['ワークショップ', '開催のお知らせは Instagram（@nori2023_）でもしとります。'],
     '/order' => ['オーダーメイド相談', null],
     '/contact' => ['お問い合わせ', '急ぎの方は Instagram（@nori2023_）のDMから連絡してつかぁさい。'],
-    '/legal/tokushoho' => ['特定商取引法に基づく表記', null],
     '/legal/privacy' => ['プライバシーポリシー', null],
     '/legal/terms' => ['利用規約', null],
     '/legal/shipping' => ['配送・送料', null],
-    '/legal/returns' => ['返品・交換・キャンセル', null],
 ];
 
 function route_public(string $path): void
@@ -32,6 +30,8 @@ function route_public(string $path): void
         $path === '/shop' => page_shop(),
         (bool) preg_match('#^/shop/([a-z0-9-]{1,80})$#', $path, $m) => page_product($m[1]),
         $path === '/about' => page_about(),
+        $path === '/legal/tokushoho' => page_tokushoho(),
+        $path === '/legal/returns' => page_returns(),
         isset(COMING_SOON[$path]) => page_coming_soon($path),
         $path === '/sitemap.xml' => page_sitemap(),
         default => render_not_found(),
@@ -243,6 +243,8 @@ function page_product(string $slug): void
         . '<div class="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm">'
         . '<a href="' . e(url('/leather-care')) . '" class="text-leather underline underline-offset-4">革のお手入れ</a>'
         . '<a href="' . e(url('/legal/shipping')) . '" class="text-leather underline underline-offset-4">配送・送料</a>'
+        . '<a href="' . e(url('/legal/returns')) . '" class="text-leather underline underline-offset-4">返品・交換</a>'
+        . '<a href="' . e(url('/legal/tokushoho')) . '" class="text-leather underline underline-offset-4">特定商取引法に基づく表記</a>'
         . '<a href="' . e(url('/contact')) . '" class="text-leather underline underline-offset-4">この作品のこと、聞いてみる</a></div>';
 
     $body = breadcrumbs([
@@ -355,6 +357,77 @@ function page_about(): void
     ], $body);
 }
 
+// ------------------------------------------------------------------ 法定表記（標準語）
+function legal_value(?string $v): string
+{
+    return $v === null || $v === '' ? '<span class="text-muted">' . e(LEGAL_TBD) . '</span>' : e($v);
+}
+
+function returns_text(): array
+{
+    $days = SELLER_INFO['report_days'];
+    return [
+        '返品・交換について' => '商品はすべて手作りの1点ものです。そのため、お客様のご都合による返品・交換はお受けしておりません。',
+        '不良品・破損・誤配送の場合' => '商品に不良・破損があった場合や、ご注文と異なる商品が届いた場合は、返品・交換または返金にて対応いたします。'
+            . ($days ? "商品到着後{$days}日以内に" : '商品到着後、お早めに') . 'メールにてご連絡ください。返送にかかる送料は当社が負担いたします。',
+        '対応できない場合' => '革の色味・シボ・小さなキズ、使用に伴う色の変化（経年変化）は天然皮革の特性であり、不良品には該当しません。お客様のもとで使用・加工された商品も対応いたしかねます。',
+    ];
+}
+
+function legal_page(string $path, string $title, string $eyebrow, string $inner): void
+{
+    $body = breadcrumbs([[$path, $title]]) . '<article class="mx-auto max-w-3xl px-5 pb-24 pt-10">'
+        . '<header class="text-center"><p class="eyebrow">' . e($eyebrow) . '</p><h1 class="mt-3 text-[1.4rem] sm:text-[1.7rem]">' . e($title) . '</h1>'
+        . '<div class="stitch mx-auto mt-6 w-16" aria-hidden="true"></div></header>' . $inner . '</article>';
+    render_page(['title' => $title, 'path' => $path], $body);
+}
+
+function legal_table(array $rows): string
+{
+    $h = '<dl class="mt-10 divide-y divide-line border-y border-line text-sm leading-7">';
+    foreach ($rows as $k => $v) {
+        $h .= '<div class="grid gap-1 py-4 sm:grid-cols-[12rem_1fr] sm:gap-6"><dt class="font-medium text-leather">' . e($k) . '</dt><dd>' . $v . '</dd></div>';
+    }
+    return $h . '</dl>';
+}
+
+function page_tokushoho(): void
+{
+    $s = SELLER_INFO;
+    $returns = '';
+    foreach (returns_text() as $k => $v) {
+        $returns .= '<p class="mt-1"><span class="font-medium">' . e($k) . '：</span>' . e($v) . '</p>';
+    }
+    $rows = [
+        '販売業者' => e($s['company']),
+        '運営統括責任者' => e($s['manager']),
+        '所在地' => e($s['postal']) . '<br>' . e($s['address']),
+        '電話番号' => e($s['tel']) . '<br><span class="text-xs text-muted">受付時間：</span>' . legal_value($s['tel_hours'])
+            . '<br><span class="text-xs text-muted">お問い合わせは、できるだけメールでお願いいたします。</span>',
+        'メールアドレス' => e($s['email']),
+        '制作' => e(MAKER_NAME) . '（商品の制作を担当しています）',
+        '販売価格' => '各商品ページに税込価格で表示しています。',
+        '商品代金以外の必要料金' => '送料（各商品ページおよび<a href="' . e(url('/legal/shipping')) . '" class="text-leather underline underline-offset-4">配送・送料</a>のページに表示します）',
+        'お支払い方法' => 'クレジットカード決済（' . e(LEGAL_TBD) . '）',
+        'お支払い時期' => 'ご注文確定時にお支払いが確定します。',
+        '商品のお届け時期' => legal_value($s['delivery']),
+        'ご注文後のキャンセル' => legal_value($s['cancel']),
+        '返品・交換' => $returns,
+    ];
+    legal_page('/legal/tokushoho', '特定商取引法に基づく表記', 'Legal notice', legal_table($rows));
+}
+
+function page_returns(): void
+{
+    $rows = [];
+    foreach (returns_text() as $k => $v) {
+        $rows[$k] = e($v);
+    }
+    $rows['ご注文後のキャンセル'] = legal_value(SELLER_INFO['cancel']);
+    $rows['ご連絡先'] = e(SELLER_INFO['company']) . '<br>メール：' . e(SELLER_INFO['email']) . '<br>電話：' . e(SELLER_INFO['tel']);
+    legal_page('/legal/returns', '返品・交換・キャンセル', 'Returns', legal_table($rows));
+}
+
 // ------------------------------------------------------------------ 準備中ページ
 function page_coming_soon(string $path): void
 {
@@ -370,7 +443,7 @@ function page_coming_soon(string $path): void
 // ------------------------------------------------------------------ サイトマップ
 function page_sitemap(): void
 {
-    $paths = ['/', '/shop', '/gallery', '/custom-cardcase', '/about', '/leather-aging', '/leather-care', '/workshop', '/order', '/contact'];
+    $paths = ['/', '/shop', '/gallery', '/custom-cardcase', '/about', '/leather-aging', '/leather-care', '/workshop', '/order', '/contact', '/legal/tokushoho', '/legal/returns'];
     foreach (list_public_products() as $p) {
         $paths[] = '/shop/' . $p['slug'];
     }

@@ -6,6 +6,20 @@ const SITE_BRAND = 'Nori2023';
 /** 制作者と販売者の表記（販売者はゼウスの契約者・特定商取引法の販売業者と一致させる） */
 const MAKER_NAME = 'Nori2023';
 const SELLER_NAME = '前川印刷株式会社';
+/** 特定商取引法に基づく表記（標準語）。null の項目は「販売開始までに記載」と表示する */
+const SELLER_INFO = [
+    'company'  => '前川印刷株式会社',
+    'manager'  => '代表取締役　清川典史',
+    'postal'   => '〒731-0135',
+    'address'  => '広島県広島市安佐南区長束1-1-14',
+    'tel'      => '082-875-2113',
+    'tel_hours'=> null,           // 電話受付時間（未定）
+    'email'    => 'kiyokawa@mpr.co.jp',
+    'delivery' => null,           // お届け時期（未定）
+    'report_days' => null,        // 不良品のご連絡期限（未定）
+    'cancel'   => null,           // ご注文後のキャンセル（未定）
+];
+const LEGAL_TBD = '販売開始までに記載します';
 const MAKER_SELLER_TEXT = '制作：' . MAKER_NAME . ' ／ 販売：' . SELLER_NAME;
 const SITE_CATCH = 'おっさんが、ひとつひとつ作っとります。';
 const SITE_SUB = '使やぁ使うほど、ええ味が出てくる革小物じゃけぇ。';
