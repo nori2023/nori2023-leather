@@ -1,5 +1,7 @@
 # おっさんのレザークラフト（mpr-shop.com/nori2023）
 Options -Indexes
+AddType application/manifest+json .webmanifest
+AddType image/x-icon .ico
 DirectoryIndex index.php
 
 <IfModule mod_rewrite.c>

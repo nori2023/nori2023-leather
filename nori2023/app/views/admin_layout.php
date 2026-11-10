@@ -54,7 +54,9 @@ function render_admin(string $title, string $body, ?string $error = null, bool $
 <?php if ($admin): ?><meta name="csrf-token" content="<?= e(csrf_token()) ?>">
 <?php endif ?>
 <title><?= e($title) ?>｜管理画面｜<?= e(SITE_NAME) ?></title>
-<link rel="icon" href="<?= e(url('/favicon.svg')) ?>" type="image/svg+xml">
+<link rel="icon" href="<?= e(asset('/favicon.ico')) ?>" sizes="any">
+<link rel="icon" href="<?= e(asset('/favicon-32.png')) ?>" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="<?= e(asset('/apple-touch-icon.png')) ?>">
 <link rel="stylesheet" href="<?= e(asset('assets/app.css')) ?>">
 </head>
 <body class="admin min-h-screen bg-paper text-[15px] text-charcoal">

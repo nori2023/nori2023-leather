@@ -36,7 +36,10 @@ function render_page(array $meta, string $body, int $status = 200): void
 <meta property="og:url" content="<?= e(absolute_url($path)) ?>">
 <meta property="og:image" content="<?= e($imageUrl) ?>">
 <meta name="twitter:card" content="summary_large_image">
-<link rel="icon" href="<?= e(url('/favicon.svg')) ?>" type="image/svg+xml">
+<link rel="icon" href="<?= e(asset('/favicon.ico')) ?>" sizes="any">
+<link rel="icon" href="<?= e(asset('/favicon-32.png')) ?>" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="<?= e(asset('/apple-touch-icon.png')) ?>">
+<link rel="manifest" href="<?= e(url('/site.webmanifest')) ?>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500&family=Noto+Serif+JP:wght@500;600&display=swap">
