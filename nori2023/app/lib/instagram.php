@@ -124,7 +124,8 @@ function ig_sync(): array
         }
         $data = json_decode($res['body'], true)['data'] ?? [];
         $existing = [];
-        foreach (db_all('SELECT id, image_key FROM instagram_posts') as $row) {
+        // 手動で登録した投稿（m_ で始まるID）は同期の対象外
+        foreach (db_all("SELECT id, image_key FROM instagram_posts WHERE id NOT LIKE 'm\\_%'") as $row) {
             $existing[$row['id']] = $row['image_key'];
         }
         $added = 0;

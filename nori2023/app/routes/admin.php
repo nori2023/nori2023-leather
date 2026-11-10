@@ -54,6 +54,9 @@ function route_admin(string $path): void
         $path === '/admin/instagram' => admin_instagram(),
         $path === '/admin/instagram/token' && $post => admin_instagram_token(),
         $path === '/admin/instagram/sync' && $post => admin_instagram_sync(),
+        $path === '/admin/instagram/posts' && $post => admin_instagram_post_save(),
+        (bool) preg_match('#^/admin/instagram/posts/(m_[0-9a-f]{16}|[0-9A-Za-z_]{1,50})/delete$#', $path, $m) && $post => admin_instagram_post_delete($m[1]),
+        $path === '/admin/instagram/token/delete' && $post => admin_instagram_token_delete(),
         $path === '/admin/logs' => admin_logs(),
         $path === '/admin/account' => $post ? admin_account_save() : admin_account(),
         default => admin_not_found(),
@@ -618,37 +621,107 @@ function admin_hero_reset(): void
 }
 
 // ================================================================== Instagram 連携
-function admin_instagram(): void
+function admin_instagram(?string $error = null): void
 {
     $t = ig_token();
     $s = get_setting('instagram.sync', []);
     $acc = get_setting('instagram.account', []);
-    $posts = db_all('SELECT * FROM instagram_posts ORDER BY posted_at DESC LIMIT 12');
-    $h = '<div class="space-y-6"><section class="' . A_CARD . '"><h2 class="font-serif text-lg text-leather">状態</h2>'
-        . '<dl class="mt-3 grid grid-cols-[8rem_1fr] gap-y-2 text-sm">'
-        . '<dt class="text-muted">アクセストークン</dt><dd>' . ($t ? ($t['expires_at'] ? '登録済み（有効期限 ' . e(format_datetime($t['expires_at'])) . '・自動更新）' : '登録済み（有効期限なし）') : '未登録') . '</dd>'
-        . (!empty($acc['id']) ? '<dt class="text-muted">アカウント</dt><dd>' . e($acc['username'] ? '@' . $acc['username'] : '') . ' <span class="text-muted">ID ' . e($acc['id']) . '</span></dd>' : '')
-        . '<dt class="text-muted">最終更新</dt><dd>' . (!empty($s['lastSyncAt']) ? e(format_datetime($s['lastSyncAt'])) : 'まだ取得していません') . '</dd>'
-        . (!empty($s['lastError']) ? '<dt class="text-muted">エラー</dt><dd class="text-red-700">' . e($s['lastError']) . '</dd>' : '')
-        . '</dl><p class="mt-3 text-xs text-muted">6時間ごとに最新の投稿を取得し、トップページに6件表示します。</p>';
-    if ($t) {
-        $h .= '<form method="post" action="' . e(url('/admin/instagram/sync')) . '" class="mt-4">' . csrf_field() . '<button class="' . A_BTN_PRIMARY . '">今すぐ更新</button></form>';
-    }
-    $h .= '</section><form method="post" action="' . e(url('/admin/instagram/token')) . '" class="' . A_CARD . ' space-y-3">' . csrf_field()
-        . '<h2 class="font-serif text-lg text-leather">' . ($t ? 'トークンを登録し直す' : 'アクセストークンの登録') . '</h2>'
-        . '<p class="text-sm leading-6 text-muted">Meta for Developers のアプリ画面「ユースケース → カスタマイズ → API setup with Unified login」で発行したアクセストークン（EAA… で始まる文字列）を貼り付けてください。トークンは画面には再表示しません。</p>'
-        . '<input name="token" type="password" autocomplete="off" required minlength="20" class="' . A_INPUT . '" placeholder="EAA…" aria-label="アクセストークン">'
-        . admin_field('InstagramアカウントID（通常は空欄）', '<input id="ig_user_id" name="ig_user_id" inputmode="numeric" pattern="[0-9]*" maxlength="30" class="' . A_INPUT . '">', 'ig_user_id', '自動で見つからないときだけ、数字のIDを入力します')
-        . '<button class="' . A_BTN_GHOST . '">登録して取得する</button></form>';
+    $posts = db_all('SELECT * FROM instagram_posts ORDER BY posted_at DESC LIMIT 24');
+
+    // 手動登録
+    $h = '<div class="space-y-6"><form method="post" action="' . e(url('/admin/instagram/posts')) . '" enctype="multipart/form-data" data-resize-form class="' . A_CARD . ' grid gap-4 sm:grid-cols-2">' . csrf_field()
+        . '<div class="sm:col-span-2"><h2 class="font-serif text-lg text-leather">投稿を登録する</h2>'
+        . '<p class="mt-1 text-sm leading-6 text-muted">Instagramに投稿したら、その投稿のURLと写真を登録してください。トップページに新しい順で6件表示されます。<br>URLは、Instagramの投稿の「…」または紙飛行機マーク →「リンクをコピー」で取れます。</p></div>'
+        . '<div class="sm:col-span-2">' . admin_field('投稿のURL *', '<input id="permalink" name="permalink" type="url" required maxlength="255" placeholder="https://www.instagram.com/p/…" class="' . A_INPUT . '">', 'permalink') . '</div>'
+        . image_input('image', '写真 *', null, true, 'Instagramに載せた写真と同じものを選んでください（正方形に切り抜いて表示します）')
+        . '<div class="space-y-4">' . admin_field('投稿日', '<input id="posted_on" name="posted_on" type="date" value="' . e(date('Y-m-d')) . '" class="' . A_INPUT . '">', 'posted_on')
+        . admin_field('種類', '<select id="media_type" name="media_type" class="' . A_INPUT . '"><option value="IMAGE">写真</option><option value="CAROUSEL_ALBUM">複数枚の写真</option><option value="VIDEO">動画・リール</option></select>', 'media_type') . '</div>'
+        . '<div class="sm:col-span-2">' . admin_field('写真の説明', '<input id="caption" name="caption" maxlength="200" class="' . A_INPUT . '">', 'caption', '例：キャメルのコインケース。読み上げや検索に使われます') . '</div>'
+        . '<div class="flex flex-wrap items-center gap-3 sm:col-span-2"><button class="' . A_BTN_PRIMARY . '">登録する</button><p data-form-status class="text-sm text-muted" aria-live="polite"></p></div></form>';
+
     if ($posts) {
-        $h .= '<section class="' . A_CARD . '"><h2 class="font-serif text-lg text-leather">取得済みの投稿</h2><ul class="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6">';
+        $h .= '<section class="' . A_CARD . '"><h2 class="font-serif text-lg text-leather">登録済みの投稿</h2><p class="mt-1 text-xs text-muted">上から6件がトップページに出ます。</p><ul class="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-6">';
         foreach ($posts as $p) {
-            $h .= '<li><a href="' . e($p['permalink']) . '" target="_blank" rel="noopener noreferrer" class="block aspect-square overflow-hidden rounded bg-sand">'
-                . ($p['image_key'] ? '<img src="' . e(upload_url($p['image_key'])) . '" alt="" class="h-full w-full object-cover" loading="lazy">' : '') . '</a></li>';
+            $h .= '<li class="text-center"><a href="' . e($p['permalink']) . '" target="_blank" rel="noopener noreferrer" class="block aspect-square overflow-hidden rounded bg-sand">'
+                . ($p['image_key'] ? '<img src="' . e(upload_url($p['image_key'])) . '" alt="" class="h-full w-full object-cover" loading="lazy">' : '') . '</a>'
+                . '<p class="mt-1 text-[11px] text-muted">' . e(format_date($p['posted_at'])) . '</p>'
+                . '<form method="post" action="' . e(url('/admin/instagram/posts/' . rawurlencode($p['id']) . '/delete')) . '" data-confirm="この投稿をサイトから外します。よろしいですか？（Instagram側は消えません）">'
+                . csrf_field() . '<button class="min-h-9 text-xs text-red-700 underline">外す</button></form></li>';
         }
         $h .= '</ul></section>';
     }
-    render_admin('Instagram連携', $h . '</div>');
+
+    // 自動連携（Meta側の準備ができたとき用）
+    $h .= '<details class="' . A_CARD . '"' . ($t ? ' open' : '') . '><summary class="cursor-pointer font-serif text-lg text-leather">自動連携（Metaのアプリを使う場合）</summary>'
+        . '<dl class="mt-3 grid grid-cols-[8rem_1fr] gap-y-2 text-sm">'
+        . '<dt class="text-muted">アクセストークン</dt><dd>' . ($t ? ($t['expires_at'] ? '登録済み（有効期限 ' . e(format_datetime($t['expires_at'])) . '・自動更新）' : '登録済み（有効期限なし）') : '未登録（手動登録で運用中）') . '</dd>'
+        . (!empty($acc['id']) ? '<dt class="text-muted">アカウント</dt><dd>' . e(!empty($acc['username']) ? '@' . $acc['username'] : '') . ' <span class="text-muted">ID ' . e($acc['id']) . '</span></dd>' : '')
+        . '<dt class="text-muted">最終更新</dt><dd>' . (!empty($s['lastSyncAt']) ? e(format_datetime($s['lastSyncAt'])) : '—') . '</dd>'
+        . (!empty($s['lastError']) ? '<dt class="text-muted">エラー</dt><dd class="text-red-700">' . e($s['lastError']) . '</dd>' : '')
+        . '</dl>';
+    if ($t) {
+        $h .= '<div class="mt-4 flex flex-wrap gap-3"><form method="post" action="' . e(url('/admin/instagram/sync')) . '">' . csrf_field() . '<button class="' . A_BTN_PRIMARY . '">今すぐ更新</button></form>'
+            . '<form method="post" action="' . e(url('/admin/instagram/token/delete')) . '" data-confirm="自動連携をやめます。登録済みの投稿は残ります。よろしいですか？">' . csrf_field() . '<button class="' . A_BTN_DANGER . '">自動連携をやめる</button></form></div>';
+    }
+    $h .= '<form method="post" action="' . e(url('/admin/instagram/token')) . '" class="mt-6 space-y-3 border-t border-line pt-5">' . csrf_field()
+        . '<p class="text-sm leading-6 text-muted">Meta for Developers のアプリ画面「ユースケース → カスタマイズ → API setup with Unified login」で発行したアクセストークン（EAA… で始まる文字列）を貼り付けると、6時間ごとに最新の投稿を自動で取り込みます。トークンは画面には再表示しません。</p>'
+        . '<input name="token" type="password" autocomplete="off" required minlength="20" class="' . A_INPUT . '" placeholder="EAA…" aria-label="アクセストークン">'
+        . admin_field('InstagramアカウントID（通常は空欄）', '<input id="ig_user_id" name="ig_user_id" inputmode="numeric" pattern="[0-9]*" maxlength="30" class="' . A_INPUT . '">', 'ig_user_id', '自動で見つからないときだけ、数字のIDを入力します')
+        . '<button class="' . A_BTN_GHOST . '">登録して取得する</button></form></details>';
+    render_admin('Instagram', $h . '</div>', $error);
+}
+
+function admin_instagram_post_save(): void
+{
+    $url = post_str('permalink', 255);
+    $date = post_str('posted_on', 10);
+    $type = in_array($_POST['media_type'] ?? '', ['IMAGE', 'CAROUSEL_ALBUM', 'VIDEO'], true) ? $_POST['media_type'] : 'IMAGE';
+    $caption = post_str('caption', 200);
+    $fail = static fn (string $m) => form_fail($m, static fn ($msg) => admin_instagram($msg));
+    if (!preg_match('#^https://(www\.)?instagram\.com/[A-Za-z0-9_.\-/]+/?(\?[A-Za-z0-9_=&%.\-]*)?$#', $url)) {
+        $fail('InstagramのURL（https://www.instagram.com/… の形）を入力してください。');
+    }
+    $url = preg_replace('/\?.*$/', '', $url); // 追跡用のパラメータを外す
+    if ($date !== '' && (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || !strtotime($date))) {
+        $fail('投稿日を正しく入力してください。');
+    }
+    if (db_value('SELECT COUNT(*) FROM instagram_posts WHERE permalink = ?', [$url])) {
+        $fail('この投稿は、もう登録されています。');
+    }
+    $img = read_uploaded_image('image');
+    if (!$img) {
+        $fail('写真を読み込めませんでした。写真を選び直してください。');
+    }
+    $id = 'm_' . bin2hex(random_bytes(8));
+    $key = 'instagram/' . $id . '.' . $img['ext'];
+    store_upload($key, $img['bytes']);
+    $posted = ($date ?: date('Y-m-d')) . ' ' . ($date && $date !== date('Y-m-d') ? '12:00:00' : date('H:i:s'));
+    db_exec('INSERT INTO instagram_posts (id, permalink, caption, media_type, posted_at, image_key, synced_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
+        [$id, $url, $caption ?: null, $type, $posted, $key]);
+    audit('instagram.post_add', $id, ['url' => $url]);
+    form_done('/admin/instagram?notice=saved');
+}
+
+function admin_instagram_post_delete(string $id): void
+{
+    $p = db_one('SELECT * FROM instagram_posts WHERE id = ?', [$id]);
+    if ($p) {
+        db_exec('DELETE FROM instagram_posts WHERE id = ?', [$id]);
+        if ($p['image_key']) {
+            delete_uploads([$p['image_key']]);
+        }
+        audit('instagram.post_delete', $id, ['url' => $p['permalink']]);
+    }
+    redirect('/admin/instagram?notice=deleted');
+}
+
+function admin_instagram_token_delete(): void
+{
+    db_exec("DELETE FROM integration_tokens WHERE name = 'instagram'");
+    set_setting('instagram.account', [], current_admin()['email']);
+    set_setting('instagram.sync', [], current_admin()['email']);
+    audit('instagram.token_delete');
+    redirect('/admin/instagram?notice=deleted');
 }
 
 function admin_instagram_token(): void

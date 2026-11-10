@@ -9,7 +9,7 @@ const ADMIN_NAV = [
     ['/admin/workshops', 'ワークショップ'],
     ['/admin/aging', '経年変化'],
     ['/admin/settings', 'ページ設定'],
-    ['/admin/instagram', 'Instagram連携'],
+    ['/admin/instagram', 'Instagram'],
     ['/admin/logs', '操作履歴'],
     ['/admin/account', 'アカウント'],
 ];
