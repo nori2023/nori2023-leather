@@ -56,7 +56,7 @@ function get_product(string $id): ?array
     return $row ? attach_images([$row])[0] : null;
 }
 
-function list_all_products(?string $status, ?string $q): array
+function list_all_products(?string $status, ?string $q, string $sort = 'updated'): array
 {
     $where = [];
     $params = [];
@@ -69,8 +69,41 @@ function list_all_products(?string $status, ?string $q): array
         $params[] = '%' . $q . '%';
         $params[] = '%' . $q . '%';
     }
-    $sql = PRODUCT_SELECT . ($where ? ' WHERE ' . implode(' AND ', $where) : '') . ' ORDER BY p.updated_at DESC LIMIT 500';
+    $order = match ($sort) {
+        'code' => 'LENGTH(p.code), p.code',
+        'code_desc' => 'LENGTH(p.code) DESC, p.code DESC',
+        default => 'p.updated_at DESC',
+    };
+    $sql = PRODUCT_SELECT . ($where ? ' WHERE ' . implode(' AND ', $where) : '') . ' ORDER BY ' . $order . ' LIMIT 500';
     return attach_images(db_all($sql, $params));
+}
+
+/**
+ * 最後の品番と、次に使う品番の候補。
+ * いちばん新しく登録した商品の品番の形（例：nori2023-0004 → 「nori2023-」＋4桁）をもとに、
+ * 同じ形の中で番号がいちばん大きいものを「最後の品番」とする。
+ */
+function product_code_status(): array
+{
+    $count = (int) db_value('SELECT COUNT(*) FROM products');
+    $latest = db_value('SELECT code FROM products ORDER BY created_at DESC LIMIT 1');
+    if (!$latest || !preg_match('/^(.*?)(\d+)$/', (string) $latest, $m)) {
+        return ['last' => $latest ?: null, 'next' => null, 'count' => $count];
+    }
+    $prefix = $m[1];
+    $digits = strlen($m[2]);
+    $best = ['code' => $latest, 'n' => (int) $m[2]];
+    foreach (db_all('SELECT code FROM products WHERE code LIKE ?', [addcslashes($prefix, '%_\\') . '%']) as $r) {
+        if (preg_match('/^' . preg_quote($prefix, '/') . '(\d+)$/', (string) $r['code'], $mm) && (int) $mm[1] > $best['n']) {
+            $best = ['code' => $r['code'], 'n' => (int) $mm[1]];
+        }
+    }
+    $n = $best['n'];
+    do {
+        $n++;
+        $next = $prefix . str_pad((string) $n, $digits, '0', STR_PAD_LEFT);
+    } while (db_value('SELECT COUNT(*) FROM products WHERE code = ?', [$next]));
+    return ['last' => $best['code'], 'next' => $next, 'count' => $count];
 }
 
 function list_categories(): array

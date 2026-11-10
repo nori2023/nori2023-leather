@@ -134,17 +134,51 @@ function admin_products(): void
 {
     $status = query_str('status', 20) ?: null;
     $q = query_str('q', 100) ?: null;
-    $products = list_all_products($status, $q);
+    $view = query_str('view', 10) === 'photo' ? 'photo' : 'list';
+    $sort = in_array(query_str('sort', 12), ['code', 'code_desc', 'updated'], true) ? query_str('sort', 12) : ($view === 'list' ? 'code' : 'updated');
+    $products = list_all_products($status, $q, $sort);
+    $cs = product_code_status();
+    $qs = static fn (array $over): string => url('/admin/products') . '?' . http_build_query(array_filter(array_merge(['status' => $status, 'q' => $q, 'view' => $view, 'sort' => $sort], $over), static fn ($v) => $v !== null && $v !== ''));
+
     $opts = '<option value="">すべての状態</option>';
     foreach (STATUS_LABEL as $k => $label) {
         $opts .= '<option value="' . e($k) . '"' . ($k === $status ? ' selected' : '') . '>' . e($label) . '</option>';
     }
-    $h = '<div class="mb-4 flex flex-wrap items-end gap-3"><a href="' . e(url('/admin/products/new')) . '" class="' . A_BTN_PRIMARY . '">＋ 新しく登録</a>'
-        . '<form method="get" class="flex flex-1 flex-wrap items-end gap-2"><select name="status" class="' . A_INPUT . ' !mt-0 !w-auto" aria-label="販売状態で絞り込み">' . $opts . '</select>'
-        . '<input name="q" value="' . e($q ?? '') . '" placeholder="商品名・管理番号" class="' . A_INPUT . ' !mt-0 !w-auto flex-1" aria-label="検索">'
+    $h = '';
+    if ($cs['last']) {
+        $h .= '<div class="' . A_CARD . ' mb-4 grid grid-cols-3 gap-2 text-center text-sm">'
+            . '<div><p class="text-xs text-muted">登録数</p><p class="mt-1 text-lg font-medium">' . e((string) $cs['count']) . '件</p></div>'
+            . '<div><p class="text-xs text-muted">最後の品番</p><p class="mt-1 whitespace-nowrap font-mono text-[0.78rem] sm:text-base">' . e($cs['last']) . '</p></div>'
+            . '<div><p class="text-xs text-muted">次の品番</p><p class="mt-1 whitespace-nowrap font-mono text-[0.78rem] text-camel sm:text-base">' . e($cs['next']) . '</p></div></div>';
+    }
+    $h .= '<div class="mb-4 flex flex-wrap items-end gap-3"><a href="' . e(url('/admin/products/new')) . '" class="' . A_BTN_PRIMARY . '">＋ 新しく登録</a>'
+        . '<form method="get" class="flex flex-1 flex-wrap items-end gap-2"><input type="hidden" name="view" value="' . e($view) . '"><input type="hidden" name="sort" value="' . e($sort) . '">'
+        . '<select name="status" class="' . A_INPUT . ' !mt-0 !w-auto" aria-label="販売状態で絞り込み">' . $opts . '</select>'
+        . '<input name="q" value="' . e($q ?? '') . '" placeholder="商品名・品番" class="' . A_INPUT . ' !mt-0 !w-auto flex-1" aria-label="検索">'
         . '<button class="' . A_BTN_GHOST . '">絞り込む</button></form></div>';
+    $tab = static fn (string $label, bool $on, string $href): string => '<a href="' . e($href) . '" class="inline-flex min-h-10 items-center rounded-full border px-4 text-sm '
+        . ($on ? 'border-leather bg-leather text-ivory' : 'border-line bg-white') . '"' . ($on ? ' aria-current="page"' : '') . '>' . e($label) . '</a>';
+    $h .= '<div class="mb-3 flex flex-wrap items-center justify-between gap-2"><div class="flex gap-2">'
+        . $tab('リスト', $view === 'list', $qs(['view' => 'list', 'sort' => 'code'])) . $tab('写真で見る', $view === 'photo', $qs(['view' => 'photo', 'sort' => 'updated'])) . '</div>'
+        . '<div class="flex gap-2 text-sm"><span class="self-center text-muted">並び：</span>'
+        . $tab('品番 ↑', $sort === 'code', $qs(['sort' => 'code'])) . $tab('品番 ↓', $sort === 'code_desc', $qs(['sort' => 'code_desc'])) . $tab('更新順', $sort === 'updated', $qs(['sort' => 'updated'])) . '</div></div>';
+
     if (!$products) {
-        $h .= '<p class="' . A_CARD . ' text-center text-muted">商品はまだありません。「＋ 新しく登録」から登録してください。</p>';
+        $h .= '<p class="' . A_CARD . ' text-center text-muted">' . ($q || $status ? '条件に合う商品はありません。' : '商品はまだありません。「＋ 新しく登録」から登録してください。') . '</p>';
+    } elseif ($view === 'list') {
+        $h .= '<div class="overflow-x-auto rounded-lg border border-line bg-white"><table class="w-full min-w-[34rem] text-sm"><thead class="bg-paper text-left text-xs text-muted"><tr>'
+            . '<th class="px-3 py-2 font-medium">品番</th><th class="px-3 py-2 font-medium">商品名</th><th class="px-3 py-2 font-medium">状態</th>'
+            . '<th class="px-3 py-2 text-right font-medium">価格</th><th class="px-3 py-2 text-right font-medium">写真</th><th class="px-3 py-2 font-medium">登録日</th></tr></thead><tbody class="divide-y divide-line">';
+        foreach ($products as $p) {
+            $link = e(url('/admin/products/' . $p['id']));
+            $h .= '<tr class="hover:bg-paper"><td class="whitespace-nowrap px-3 py-2.5 font-mono"><a href="' . $link . '" class="text-leather underline underline-offset-2">' . e($p['code']) . '</a></td>'
+                . '<td class="px-3 py-2.5"><a href="' . $link . '">' . e($p['name']) . '</a></td>'
+                . '<td class="whitespace-nowrap px-3 py-2.5">' . status_badge($p['status']) . '</td>'
+                . '<td class="whitespace-nowrap px-3 py-2.5 text-right">' . e(format_price($p['price'])) . '</td>'
+                . '<td class="px-3 py-2.5 text-right' . (count($p['images']) ? '' : ' text-red-700') . '">' . count($p['images']) . '枚</td>'
+                . '<td class="whitespace-nowrap px-3 py-2.5 text-muted">' . e(format_date($p['created_at'])) . '</td></tr>';
+        }
+        $h .= '</tbody></table></div><p class="mt-2 text-xs text-muted">表は横にスクロールできます。品番か商品名を押すと編集画面が開きます。</p>';
     } else {
         $h .= '<ul class="space-y-2">';
         foreach ($products as $p) {
@@ -174,7 +208,7 @@ function admin_product_form(?array $product, ?array $values = null, ?string $err
     $categories = list_categories();
     $shipping = list_shipping_profiles();
     $isNew = $product === null;
-    $v = $values ?? ($product ?: ['status' => 'draft']);
+    $v = $values ?? ($product ?: ['status' => 'draft', 'code' => product_code_status()['next'] ?? '']);
     if (($v['status'] ?? '') === 'reserved') {
         $v['status'] = 'on_sale';
     }
