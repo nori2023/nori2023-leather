@@ -146,6 +146,13 @@
       var jobs = [];
       form.querySelectorAll("input[type=file][data-resize]").forEach(function (inp) {
         fd.delete(inp.name);
+        if (inp.multiple) {
+          // 複数枚：photos_0, photos_1 … の名前で送る
+          Array.prototype.forEach.call(inp.files, function (f, n) {
+            jobs.push(resize(f, 1600, 0.85).then(function (r) { fd.append(inp.name + "_" + n, r.blob, inp.name + n + ".jpg"); }));
+          });
+          return;
+        }
         var f = inp.files[0];
         if (!f) return;
         jobs.push(resize(f, 1600, 0.85).then(function (r) { fd.append(inp.name, r.blob, inp.name + ".jpg"); }));

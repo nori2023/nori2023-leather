@@ -116,6 +116,7 @@ function admin_workshop_form(?string $id, ?string $error = null, ?array $input =
         . '<div class="flex flex-wrap items-center gap-3 sm:col-span-2"><button class="' . A_BTN_PRIMARY . '">保存する</button>'
         . '<a href="' . e(url('/admin/workshops')) . '" class="' . A_BTN_GHOST . '">一覧に戻る</a><p data-form-status class="text-sm text-muted" aria-live="polite"></p></div></form>';
     if ($w) {
+        $h .= workshop_photos_section($w);
         $h .= '<form method="post" action="' . e(url('/admin/workshops/' . $id . '/delete')) . '" class="mt-6" data-confirm="このワークショップを削除します。よろしいですか？">'
             . csrf_field() . '<button class="' . A_BTN_DANGER . '">このワークショップを削除</button></form>';
     }
@@ -196,6 +197,10 @@ function admin_workshop_delete(string $id): void
 {
     $w = db_one('SELECT * FROM workshop_events WHERE id = ?', [$id]);
     if ($w) {
+        foreach (db_all('SELECT image_key FROM workshop_photos WHERE workshop_id = ?', [$id]) as $ph) {
+            delete_uploads([$ph['image_key']]);
+        }
+        db_exec('DELETE FROM workshop_photos WHERE workshop_id = ?', [$id]);
         db_exec('DELETE FROM workshop_events WHERE id = ?', [$id]);
         if ($w['image_key']) {
             delete_uploads([$w['image_key']]);
@@ -405,4 +410,88 @@ function admin_works_delete(string $id): void
         audit('works.delete', $id, ['caption' => $w['caption']]);
     }
     redirect('/admin/works?notice=deleted');
+}
+
+// ------------------------------------------------------------------ ワークショップ：参加者の作品写真
+function workshop_photos_section(array $w): string
+{
+    $photos = db_all('SELECT * FROM workshop_photos WHERE workshop_id = ? ORDER BY created_at', [$w['id']]);
+    $base = '/admin/workshops/' . $w['id'] . '/photos';
+    $h = '<section class="mt-8"><form method="post" action="' . e(url($base)) . '" enctype="multipart/form-data" data-resize-form class="' . A_CARD . ' space-y-4">' . csrf_field()
+        . '<div><h2 class="font-serif text-lg text-leather">参加者の作品写真</h2>'
+        . '<p class="mt-1 text-sm leading-6 text-muted">ワークショップで作ってもろうた作品の写真を載せられます。サイトの「ワークショップ」ページに並びます。<br>'
+        . '<strong class="text-leather">載せてよいか、参加者の方に必ず許可をもろうてください。</strong>顔が写った写真や、名前が刻印された作品は特に気をつけてください。</p></div>'
+        . admin_field('写真（何枚でも一度に選べます） *', '<input type="file" id="photos" name="photos" accept="image/*" multiple required data-resize class="mt-1 block w-full text-sm">', 'photos')
+        . admin_field('ひとこと（全部の写真に付きます）', '<input id="caption" name="caption" maxlength="200" class="' . A_INPUT . '">', 'caption', '例：ネイビーとワインの2色で編み込み')
+        . '<label class="flex min-h-11 items-start gap-2 text-sm"><input type="checkbox" name="has_consent" value="1" class="mt-1"> 参加者の方に、サイトへの掲載の許可をもらいました</label>'
+        . '<p class="text-xs text-muted">許可のチェックがない写真は、サイトに公開されません（管理画面にだけ残ります）。</p>'
+        . '<div class="flex flex-wrap items-center gap-3"><button class="' . A_BTN_PRIMARY . '">写真を追加する</button><p data-form-status class="text-sm text-muted" aria-live="polite"></p></div></form>';
+    if ($photos) {
+        $h .= '<ul class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">';
+        foreach ($photos as $p) {
+            $pub = $p['is_published'] && $p['has_consent'];
+            $h .= '<li class="' . A_CARD . ' !p-2' . ($pub ? '' : ' opacity-70') . '"><img src="' . e(upload_url($p['image_key'])) . '" alt="" class="aspect-square w-full rounded object-cover" loading="lazy">'
+                . ($p['caption'] ? '<p class="mt-1 line-clamp-2 text-xs">' . e($p['caption']) . '</p>' : '')
+                . '<p class="mt-1 text-xs">' . ($pub ? '<span class="rounded bg-green-50 px-1.5 py-0.5 text-green-900">公開中</span>' : '<span class="rounded bg-stone-100 px-1.5 py-0.5">' . ($p['has_consent'] ? '非公開' : '許可なし・非公開') . '</span>') . '</p>'
+                . '<div class="mt-1 flex flex-wrap gap-x-3">'
+                . '<form method="post" action="' . e(url($base . '/' . $p['id'] . '/toggle')) . '">' . csrf_field() . '<button class="min-h-9 text-xs text-leather underline">'
+                . ($p['is_published'] ? '非公開にする' : ($p['has_consent'] ? '公開する' : '許可をもらったので公開')) . '</button></form>'
+                . '<form method="post" action="' . e(url($base . '/' . $p['id'] . '/delete')) . '" data-confirm="この写真を削除します。よろしいですか？">' . csrf_field()
+                . '<button class="min-h-9 text-xs text-red-700 underline">削除</button></form></div></li>';
+        }
+        $h .= '</ul>';
+    }
+    return $h . '</section>';
+}
+
+function admin_workshop_photos_add(string $wsId): void
+{
+    if (!db_one('SELECT id FROM workshop_events WHERE id = ?', [$wsId])) {
+        admin_not_found();
+        exit;
+    }
+    $caption = post_str('caption', 200);
+    $consent = ($_POST['has_consent'] ?? '') === '1' ? 1 : 0;
+    $fields = array_values(array_filter(array_keys($_FILES), static fn ($k) => preg_match('/^photos(_\d{1,3})?$/', $k)));
+    if (!$fields) {
+        form_fail('写真を選んでください。', static fn ($m) => admin_workshop_form($wsId, $m));
+    }
+    $added = 0;
+    foreach (array_slice($fields, 0, 30) as $field) {
+        $key = save_optional_image($field, 'workshop-photo');
+        if (!is_string($key)) {
+            continue;
+        }
+        db_exec('INSERT INTO workshop_photos (id, workshop_id, image_key, caption, has_consent, is_published) VALUES (?, ?, ?, ?, ?, ?)',
+            [uuid(), $wsId, $key, $caption ?: null, $consent, $consent]);
+        $added++;
+    }
+    if (!$added) {
+        form_fail('写真を読み込めませんでした。選び直してください。', static fn ($m) => admin_workshop_form($wsId, $m));
+    }
+    audit('workshop.photos_add', $wsId, ['count' => $added, 'consent' => $consent]);
+    form_done('/admin/workshops/' . $wsId . '?notice=saved');
+}
+
+function admin_workshop_photo_toggle(string $wsId, string $photoId): void
+{
+    $p = db_one('SELECT * FROM workshop_photos WHERE id = ? AND workshop_id = ?', [$photoId, $wsId]);
+    if ($p) {
+        // 非公開→公開にするときは、許可をもらったことの確認を兼ねる
+        $pub = $p['is_published'] ? 0 : 1;
+        db_exec('UPDATE workshop_photos SET is_published = ?, has_consent = GREATEST(has_consent, ?) WHERE id = ?', [$pub, $pub, $photoId]);
+        audit('workshop.photo_toggle', $photoId, ['published' => $pub]);
+    }
+    redirect('/admin/workshops/' . $wsId . '?notice=saved');
+}
+
+function admin_workshop_photo_delete(string $wsId, string $photoId): void
+{
+    $p = db_one('SELECT * FROM workshop_photos WHERE id = ? AND workshop_id = ?', [$photoId, $wsId]);
+    if ($p) {
+        db_exec('DELETE FROM workshop_photos WHERE id = ?', [$photoId]);
+        delete_uploads([$p['image_key']]);
+        audit('workshop.photo_delete', $photoId);
+    }
+    redirect('/admin/workshops/' . $wsId . '?notice=deleted');
 }

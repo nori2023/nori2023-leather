@@ -81,6 +81,27 @@ function page_workshop(): void
         $cards = empty_state('いまは、決まっとるワークショップはありません', '次の開催が決まったら、ここと Instagram（@nori2023_）でお知らせしますけぇね。');
     }
 
+    // 参加者の作品写真（掲載の許可をもろうたものだけ）
+    $photoHtml = '';
+    try {
+        $wsPhotos = db_all('SELECT p.*, w.event_date, w.place, w.item_name FROM workshop_photos p JOIN workshop_events w ON w.id = p.workshop_id
+                            WHERE p.is_published = 1 AND p.has_consent = 1 AND w.is_published = 1 ORDER BY w.event_date DESC, p.created_at LIMIT 60');
+    } catch (Throwable) {
+        $wsPhotos = [];
+    }
+    if ($wsPhotos) {
+        $photoHtml = '<section class="mx-auto mt-20 max-w-5xl px-5">' . section_heading('みんなが作った作品', 'Made by you', 'ワークショップで作ってもろうた作品です。どれも世界にひとつだけじゃね。')
+            . '<ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">';
+        foreach ($wsPhotos as $p) {
+            $label = ws_date($p['event_date']) . ' ' . $p['place'];
+            $alt = ($p['caption'] ?: $p['item_name']) . '（' . $label . '）';
+            $photoHtml .= '<li><div class="relative aspect-square overflow-hidden rounded-card bg-sand">' . ws_img($p['image_key'], $alt, 'absolute inset-0 h-full w-full') . '</div>'
+                . ($p['caption'] ? '<p class="mt-2 text-xs leading-5">' . e($p['caption']) . '</p>' : '')
+                . '<p class="mt-1 text-[11px] text-muted">' . e($label) . '</p></li>';
+        }
+        $photoHtml .= '</ul></section>';
+    }
+
     $pastHtml = '';
     if ($past) {
         $pastHtml = '<section class="mx-auto mt-20 max-w-4xl px-5">' . section_heading('これまでのワークショップ', 'Past events')
@@ -97,7 +118,7 @@ function page_workshop(): void
         . '<h1 class="mt-3 text-[1.55rem] sm:text-[2rem]">革にさわって、<br class="sm:hidden">作ってみんさい。</h1>'
         . '<div class="stitch mx-auto mt-6 w-16" aria-hidden="true"></div>'
         . '<p class="mt-8 text-[0.95rem] leading-8 text-muted">はじめての人でも、子どもさんでも大丈夫。<br>おっさんが横について、いっしょに作りますけぇ。</p></header>'
-        . '<div class="mx-auto max-w-5xl space-y-8 px-5">' . $cards . '</div>' . $pastHtml
+        . '<div class="mx-auto max-w-5xl space-y-8 px-5">' . $cards . '</div>' . $photoHtml . $pastHtml
         . '<p class="mx-auto mt-16 max-w-xl px-5 pb-24 text-center text-sm text-muted">開催のお知らせは Instagram（<a href="https://www.instagram.com/nori2023_/" target="_blank" rel="noopener" class="text-leather underline underline-offset-4">@nori2023_</a>）でもしとります。</p>'
         . implode('', array_map('json_ld', $ld));
     $first = $upcoming[0] ?? null;
