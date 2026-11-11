@@ -339,7 +339,7 @@ function page_about(): void
     }
     $slots = [
         ['工房', '/images/site/workshop.jpg', '革や糸、道具が並ぶ工房の作業机'],
-        ['革の裁断', null, null],
+        ['革の裁断', '/images/site/cutting.jpg', '革の上に抜き型をのせて、プレス機で裁断するところ'],
         ['刻印', '/images/works/keyholder-engraved.jpg', '名前を刻印したレザーキーホルダー'],
         ['縫製・組み立て', '/images/site/sewing.jpg', '2本の針で、ヌメ革のカードポケットを手縫いしているところ'],
         ['完成作品', '/images/works/backpack-collage.jpg', 'ヌメ革のリュックサック'],
