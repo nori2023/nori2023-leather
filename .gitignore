@@ -5,3 +5,4 @@ nori2023/uploads/products/*
 nori2023/uploads/site/*
 nori2023/uploads/instagram/*
 !nori2023/uploads/**/.keep
+nori2023/app/password_reset.key

@@ -13,6 +13,10 @@ function route_admin(string $path): void
         admin_login();
         return;
     }
+    if ($path === '/admin/reset') {
+        admin_password_reset();
+        return;
+    }
     if (!current_admin()) {
         if (is_post() || str_contains($_SERVER['HTTP_ACCEPT'] ?? '', 'application/json')) {
             json_response(['error' => 'ログインが切れました。ページを開き直してください。'], 401);
@@ -101,8 +105,79 @@ function admin_login(): void
     $body = '<div class="mx-auto max-w-sm">' . $installed . '<form method="post" data-autofill class="' . A_CARD . ' space-y-4">' . csrf_field()
         . admin_field('メールアドレス', '<input id="email" name="email" type="email" required autocomplete="username" value="' . e($email) . '" class="' . A_INPUT . '">', 'email')
         . admin_field('パスワード', '<input id="password" name="password" type="password" required autocomplete="current-password" class="' . A_INPUT . '">', 'password')
-        . '<button class="' . A_BTN_PRIMARY . ' w-full">ログイン</button></form></div>';
+        . '<button class="' . A_BTN_PRIMARY . ' w-full">ログイン</button></form>'
+        . '<p class="mt-4 text-center text-xs text-muted"><a href="' . e(url('/admin/reset')) . '" class="underline">パスワードを忘れたとき</a></p></div>';
     render_admin('ログイン', $body, $error, true);
+}
+
+// ------------------------------------------------------------------ パスワードを忘れたとき
+// サーバーの app/ に password_reset.key を置いたときだけ使える（app/ はWebから見えないので、置けるのはサーバーの管理者だけ）。
+// 置いてから60分以内・1回だけ有効。使ったらファイルを消す。
+const RESET_KEY_FILE = APP_DIR . '/password_reset.key';
+const RESET_KEY_MINUTES = 60;
+
+function reset_key(): ?string
+{
+    if (!is_file(RESET_KEY_FILE) || filemtime(RESET_KEY_FILE) < time() - RESET_KEY_MINUTES * 60) {
+        return null;
+    }
+    $k = trim((string) file_get_contents(RESET_KEY_FILE));
+    return preg_match('/^[A-Za-z0-9]{16,64}$/', $k) ? $k : null;
+}
+
+function admin_password_reset(): void
+{
+    $key = reset_key();
+    $error = null;
+    if (!$key) {
+        render_admin('パスワードの再設定', '<div class="mx-auto max-w-md ' . A_CARD . ' text-sm leading-7">いまは再設定できません。<br>'
+            . 'サーバーの <code>app</code> フォルダに再設定用のファイル（password_reset.key）を置いてから、60分以内に開いてください。</div>', null, true);
+        return;
+    }
+    $admins = db_all('SELECT id, email FROM admin_users ORDER BY created_at');
+    if (is_post()) {
+        verify_csrf();
+        $ip = client_ip();
+        $pw = (string) ($_POST['password'] ?? '');
+        $email = mb_strtolower(post_str('email', 255));
+        if (login_locked($ip, 'password-reset')) {
+            $error = '失敗が続いたため、しばらく再設定できません。15分ほど待ってからお試しください。';
+        } elseif (!hash_equals($key, trim((string) ($_POST['key'] ?? '')))) {
+            db_exec('INSERT INTO login_attempts (ip, email, succeeded) VALUES (?, ?, 0)', [$ip, 'password-reset']);
+            $error = '再設定キーが違います。';
+        } elseif ($pw !== (string) ($_POST['password2'] ?? '')) {
+            $error = '確認用のパスワードが一致しません。';
+        } elseif ($problem = password_problem($pw)) {
+            $error = $problem;
+        } else {
+            $target = count($admins) === 1 ? $admins[0] : (array_values(array_filter($admins, static fn ($a) => mb_strtolower($a['email']) === $email))[0] ?? null);
+            if (!$target) {
+                $error = 'そのメールアドレスの管理者は見つかりません。';
+            } else {
+                db_exec('UPDATE admin_users SET password_hash = ? WHERE id = ?', [password_hash($pw, PASSWORD_DEFAULT), $target['id']]);
+                db_exec("DELETE FROM login_attempts WHERE ip = ? OR email IN (?, 'password-reset')", [$ip, $target['email']]);
+                @unlink(RESET_KEY_FILE);
+                audit('admin.password_reset', $target['id'], ['email' => $target['email']]);
+                render_admin('パスワードの再設定', '<div class="mx-auto max-w-md ' . A_CARD . ' space-y-3 text-sm leading-7">'
+                    . '<p class="font-medium text-green-900">パスワードを新しくしました。</p>'
+                    . '<p>ログインのメールアドレスは <strong class="break-all">' . e($target['email']) . '</strong> です。</p>'
+                    . '<p>再設定用のファイルは自動で消しました。念のため、サーバーの app フォルダに password_reset.key が残っていないか確認してください。</p>'
+                    . '<a href="' . e(url('/admin/login')) . '" class="' . A_BTN_PRIMARY . ' w-full">ログイン画面へ</a></div>', null, true);
+                return;
+            }
+        }
+    }
+    $emailField = count($admins) > 1
+        ? admin_field('メールアドレス', '<input id="email" name="email" type="email" required class="' . A_INPUT . '">', 'email')
+        : '';
+    $body = '<div class="mx-auto max-w-sm"><form method="post" data-autofill class="' . A_CARD . ' space-y-4">' . csrf_field()
+        . '<p class="text-sm leading-6 text-muted">再設定キーと新しいパスワードを入れてください。キーは60分で使えなくなります。</p>'
+        . admin_field('再設定キー', '<input id="key" name="key" required autocomplete="off" autocapitalize="off" spellcheck="false" class="' . A_INPUT . ' font-mono">', 'key')
+        . $emailField
+        . admin_field('新しいパスワード', '<input id="password" name="password" type="password" required minlength="10" autocomplete="new-password" class="' . A_INPUT . '">', 'password', '10文字以上・英字と数字をまぜる')
+        . admin_field('新しいパスワード（確認）', '<input id="password2" name="password2" type="password" required minlength="10" autocomplete="new-password" class="' . A_INPUT . '">', 'password2')
+        . '<button class="' . A_BTN_PRIMARY . ' w-full">パスワードを再設定する</button></form></div>';
+    render_admin('パスワードの再設定', $body, $error, true);
 }
 
 function admin_logout(): void
