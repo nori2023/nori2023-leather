@@ -34,3 +34,14 @@ function sales_enabled(): bool
 {
     return get_setting('sales.enabled', false) === true;
 }
+
+/** Google アナリティクス（GA4）の測定ID。未設定なら空文字 */
+function ga_measurement_id(): string
+{
+    try {
+        $id = (string) (get_setting('analytics.ga4', [])['id'] ?? '');
+    } catch (Throwable) {
+        return '';
+    }
+    return preg_match('/^G-[A-Z0-9]{4,15}$/', $id) ? $id : '';
+}

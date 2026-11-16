@@ -19,6 +19,7 @@ const ADMIN_NAV = [
 const ADMIN_NOTICES = [
     'saved' => '保存しました。',
     'sent' => 'テストのコードをメールで送りました。',
+    'ga_invalid' => '測定IDの形が違います。「G-」で始まる英数字を入れてください。',
     'created' => '登録しました。',
     'deleted' => '削除しました。',
     'synced' => 'Instagramを更新しました。',

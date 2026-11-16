@@ -56,6 +56,7 @@ function route_admin(string $path): void
         $path === '/admin/shipping' && !$post => admin_shipping(),
         (bool) preg_match('#^/admin/shipping(?:/([0-9a-f-]{36}))?$#', $path, $m) && $post => admin_shipping_save($m[1] ?? null),
         $path === '/admin/settings' => $post ? admin_settings_save() : admin_settings(),
+        $path === '/admin/settings/analytics' && $post => admin_analytics_save(),
         $path === '/admin/settings/hero-image' && $post => admin_hero_upload(),
         $path === '/admin/settings/hero-image/reset' && $post => admin_hero_reset(),
         $path === '/admin/workshops' => $post ? admin_workshop_save(null) : admin_workshops(),
@@ -726,6 +727,11 @@ function admin_settings(): void
         . admin_field('キャッチコピー', '<input id="hero_catch" name="hero_catch" maxlength="60" value="' . e($hero['catch']) . '" class="' . A_INPUT . '">', 'hero_catch', '「、」の後ろで改行して表示します')
         . admin_field('サブコピー', '<input id="hero_sub" name="hero_sub" maxlength="80" value="' . e($hero['sub']) . '" class="' . A_INPUT . '">', 'hero_sub')
         . admin_field('制作者紹介の本文', '<textarea id="about_body" name="about_body" rows="14" class="' . A_INPUT . '">' . e((string) ($about['body'] ?? '')) . '</textarea>', 'about_body', '空行で段落が分かれます。空欄にすると初期の文章を表示します')
+        . '<button class="' . A_BTN_PRIMARY . '">保存する</button></form>'
+        . '<form method="post" action="' . e(url('/admin/settings/analytics')) . '" class="' . A_CARD . ' space-y-4">' . csrf_field()
+        . '<h2 class="font-serif text-lg text-leather">アクセス解析（Googleアナリティクス）</h2>'
+        . '<p class="text-sm leading-6 text-muted">Googleアナリティクスの「測定ID」（G- で始まる英数字）を入れると、サイトの見られ方を集計できます。空欄にして保存すると止まります。管理画面は集計しません。</p>'
+        . admin_field('測定ID', '<input id="ga_id" name="ga_id" maxlength="20" placeholder="G-XXXXXXXXXX" value="' . e(ga_measurement_id()) . '" autocapitalize="characters" class="' . A_INPUT . ' font-mono">', 'ga_id')
         . '<button class="' . A_BTN_PRIMARY . '">保存する</button></form></div>';
     render_admin('ページ設定', $h);
 }
@@ -738,6 +744,17 @@ function admin_settings_save(): void
     $body = post_str('about_body', 5000);
     set_setting('page.about', ['body' => $body !== '' ? $body : null], $actor);
     audit('settings.update', 'home.hero,page.about');
+    redirect('/admin/settings?notice=saved');
+}
+
+function admin_analytics_save(): void
+{
+    $id = strtoupper(preg_replace('/\s+/', '', post_str('ga_id', 20)));
+    if ($id !== '' && !preg_match('/^G-[A-Z0-9]{4,15}$/', $id)) {
+        redirect('/admin/settings?notice=ga_invalid');
+    }
+    set_setting('analytics.ga4', ['id' => $id], current_admin()['email']);
+    audit('settings.analytics', null, ['id' => $id]);
     redirect('/admin/settings?notice=saved');
 }
 

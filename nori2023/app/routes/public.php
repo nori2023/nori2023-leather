@@ -12,7 +12,6 @@ const COMING_SOON = [
     '/leather-care' => ['革のお手入れ', null],
     '/order' => ['オーダーメイド相談', null],
     '/contact' => ['お問い合わせ', '急ぎの方は Instagram（@nori2023_）のDMから連絡してつかぁさい。'],
-    '/legal/privacy' => ['プライバシーポリシー', null],
     '/legal/terms' => ['利用規約', null],
 ];
 
@@ -31,6 +30,7 @@ function route_public(string $path): void
         $path === '/workshop' => page_workshop(),
         $path === '/leather-aging' => page_leather_aging(),
         $path === '/legal/shipping' => page_shipping(),
+        $path === '/legal/privacy' => page_privacy(),
         $path === '/legal/tokushoho' => page_tokushoho(),
         $path === '/legal/returns' => page_returns(),
         isset(COMING_SOON[$path]) => page_coming_soon($path),
@@ -476,6 +476,47 @@ function page_shipping(): void
     legal_page('/legal/shipping', '配送・送料', 'Shipping', $table . '<dl class="mt-10 divide-y divide-line border-y border-line text-sm leading-7">' . $dl . '</dl>');
 }
 
+function page_privacy(): void
+{
+    $si = SELLER_INFO;
+    $link = static fn (string $href, string $label): string => '<a href="' . e($href) . '" target="_blank" rel="noopener noreferrer" class="text-leather underline underline-offset-4">' . e($label) . '</a>';
+    $sections = [
+        '1. 事業者' => e($si['company']) . '（' . e($si['manager']) . '）<br>' . e($si['postal'] . ' ' . $si['address']),
+        '2. 取得する情報' => '当サイトでは、次の情報を取得することがあります。<br>'
+            . '・ご注文時のお名前、ご住所、電話番号、メールアドレス<br>'
+            . '・お問い合わせやご相談の内容<br>'
+            . '・名入れ制作のためにお預かりする文字、ロゴなどのデータ<br>'
+            . '・当サイトの閲覧に関する情報（Cookie、閲覧したページ、ご利用の端末やブラウザの種類など）',
+        '3. 利用目的' => '取得した情報は、次の目的に利用します。<br>'
+            . '・ご注文の確認、商品の制作・発送、代金の決済<br>'
+            . '・ご注文やお問い合わせに関するご連絡<br>'
+            . '・名入れ商品の校正・制作<br>'
+            . '・当サイトの利用状況の分析と、サービスの改善<br>'
+            . '・法令にもとづく対応',
+        '4. 第三者への提供' => '法令にもとづく場合を除き、ご本人の同意なく個人情報を第三者に提供することはありません。<br>'
+            . 'ただし、次の場合には、必要な範囲で業務を委託します。<br>'
+            . '・商品の配送のため、配送業者にお名前・ご住所・電話番号を提供します。<br>'
+            . '・クレジットカード決済のため、決済代行会社（株式会社ゼウス）に決済に必要な情報を提供します。',
+        '5. クレジットカード情報' => 'クレジットカード番号などのカード情報は、決済代行会社が直接取り扱います。当サイトのサーバーにカード情報を保存することはありません。',
+        '6. アクセス解析（Googleアナリティクス）' => '当サイトでは、利用状況を把握するために、Google LLC の「Googleアナリティクス」を使用することがあります。'
+            . 'Googleアナリティクスは Cookie を使って情報を集めますが、個人を特定する情報は含まれません。<br>'
+            . '集計を望まない場合は、ブラウザの設定で Cookie を無効にするか、' . $link('https://tools.google.com/dlpage/gaoptout?hl=ja', 'Googleアナリティクス オプトアウト アドオン') . 'をご利用ください。<br>'
+            . '詳しくは ' . $link('https://policies.google.com/technologies/partner-sites?hl=ja', 'Googleのサービスを使用するサイトやアプリから収集した情報のGoogleによる使用') . ' をご覧ください。',
+        '7. 写真の掲載' => 'ワークショップなどで撮影した写真は、ご本人（未成年の方は保護者の方）の了承をいただいた場合に限り、当サイトやInstagramに掲載します。掲載の取りやめをご希望の場合は、下記の窓口までご連絡ください。',
+        '8. 安全管理' => '個人情報への不正なアクセス、紛失、漏えいなどを防ぐため、必要かつ適切な安全管理を行います。',
+        '9. 開示・訂正・削除のご請求' => 'ご本人から、個人情報の開示・訂正・利用停止・削除のご請求があった場合は、ご本人であることを確認したうえで、すみやかに対応します。',
+        '10. 改定' => '本ポリシーの内容は、必要に応じて変更することがあります。変更後の内容は、当ページに掲載した時点から効力を生じます。',
+        '11. お問い合わせ窓口' => e($si['company']) . '<br>メール：' . e($si['email']) . '<br>電話：' . e($si['tel']) . '（' . e((string) $si['tel_hours']) . '）',
+    ];
+    $h = '<p class="mt-10 text-sm leading-7">' . e($si['company']) . '（以下「当社」）は、「' . e(SITE_NAME) . '」（以下「当サイト」）におけるお客様の個人情報を、次のとおり取り扱います。</p>';
+    $h .= '<div class="mt-8 space-y-8 text-sm leading-7">';
+    foreach ($sections as $k => $v) {
+        $h .= '<section><h2 class="font-serif text-base text-leather">' . e($k) . '</h2><p class="mt-2">' . $v . '</p></section>';
+    }
+    $h .= '</div><p class="mt-10 text-right text-xs text-muted">2026年11月17日 制定</p>';
+    legal_page('/legal/privacy', 'プライバシーポリシー', 'Privacy policy', $h);
+}
+
 function page_returns(): void
 {
     $rows = [];
@@ -502,7 +543,7 @@ function page_coming_soon(string $path): void
 // ------------------------------------------------------------------ サイトマップ
 function page_sitemap(): void
 {
-    $paths = ['/', '/shop', '/gallery', '/custom-cardcase', '/about', '/leather-aging', '/leather-care', '/workshop', '/order', '/contact', '/legal/tokushoho', '/legal/returns'];
+    $paths = ['/', '/shop', '/gallery', '/custom-cardcase', '/about', '/leather-aging', '/leather-care', '/workshop', '/order', '/contact', '/legal/tokushoho', '/legal/returns', '/legal/shipping', '/legal/privacy'];
     foreach (list_public_products() as $p) {
         $paths[] = '/shop/' . $p['slug'];
     }

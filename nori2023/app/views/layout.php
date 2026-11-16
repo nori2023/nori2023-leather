@@ -55,6 +55,10 @@ function render_page(array $meta, string $body, int $status = 200): void
 </main>
 <?= site_footer() ?>
 <script src="<?= e(asset('assets/site.js')) ?>" defer></script>
+<?php if ($gaId = ga_measurement_id()): ?>
+<script async src="https://www.googletagmanager.com/gtag/js?id=<?= e($gaId) ?>"></script>
+<script src="<?= e(asset('assets/ga.js')) ?>" data-ga-id="<?= e($gaId) ?>"></script>
+<?php endif; ?>
 </body>
 </html>
 <?php
