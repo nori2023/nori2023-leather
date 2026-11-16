@@ -333,8 +333,13 @@ function page_about(): void
 {
     $about = get_setting('page.about', ['body' => null]);
     $text = is_string($about['body'] ?? null) && $about['body'] !== '' ? $about['body'] : DEFAULT_ABOUT;
+    // 文章の中の「Instagram：@nori2023_」だけの行は、下にリンク付きで出すので重ねて表示しない
+    $text = preg_replace('/^[ \t　]*Instagram[ \t　]*[:：][ \t　]*@?' . preg_quote(ltrim(INSTAGRAM_HANDLE, '@'), '/') . '[ \t　]*$/mu', '', $text) ?? $text;
     $paras = '';
     foreach (preg_split("/\n\s*\n/u", $text) ?: [] as $para) {
+        if (trim($para) === '') {
+            continue;
+        }
         $paras .= '<p class="whitespace-pre-line">' . e(trim($para)) . '</p>';
     }
     $slots = [
