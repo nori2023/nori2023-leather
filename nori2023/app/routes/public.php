@@ -14,7 +14,6 @@ const COMING_SOON = [
     '/contact' => ['お問い合わせ', '急ぎの方は Instagram（@nori2023_）のDMから連絡してつかぁさい。'],
     '/legal/privacy' => ['プライバシーポリシー', null],
     '/legal/terms' => ['利用規約', null],
-    '/legal/shipping' => ['配送・送料', null],
 ];
 
 function route_public(string $path): void
@@ -31,6 +30,7 @@ function route_public(string $path): void
         $path === '/gallery' => page_gallery(),
         $path === '/workshop' => page_workshop(),
         $path === '/leather-aging' => page_leather_aging(),
+        $path === '/legal/shipping' => page_shipping(),
         $path === '/legal/tokushoho' => page_tokushoho(),
         $path === '/legal/returns' => page_returns(),
         isset(COMING_SOON[$path]) => page_coming_soon($path),
@@ -423,7 +423,7 @@ function page_tokushoho(): void
         'メールアドレス' => e($s['email']),
         '制作' => e(MAKER_NAME) . '（商品の制作を担当しています）',
         '販売価格' => '各商品ページに税込価格で表示しています。',
-        '商品代金以外の必要料金' => '送料（各商品ページおよび<a href="' . e(url('/legal/shipping')) . '" class="text-leather underline underline-offset-4">配送・送料</a>のページに表示します）',
+        '商品代金以外の必要料金' => '送料' . (($ft = shipping_fee_text()) ? '<br>' . $ft : '') . '<br><span class="text-xs text-muted">商品ごとの配送方法は各商品ページに、くわしくは<a href="' . e(url('/legal/shipping')) . '" class="text-leather underline underline-offset-4">配送・送料</a>のページに表示しています。</span>',
         'お支払い方法' => 'クレジットカード決済（3Dセキュア本人認証に対応）',
         'お支払い時期' => 'ご注文確定時にお支払いが確定します。',
         '商品のお届け時期' => legal_value($s['delivery']),
@@ -431,6 +431,44 @@ function page_tokushoho(): void
         '返品・交換' => $returns,
     ];
     legal_page('/legal/tokushoho', '特定商取引法に基づく表記', 'Legal notice', legal_table($rows));
+}
+
+/** 有効な配送方法の一覧（送料の説明に使う） */
+function active_shipping(): array
+{
+    return db_all('SELECT name, fee, note FROM shipping_profiles WHERE is_active = 1 ORDER BY fee IS NULL, fee, name');
+}
+
+function shipping_fee_text(): string
+{
+    $list = array_map(static fn ($r) => e($r['name']) . '：' . ($r['fee'] !== null ? e(format_price((int) $r['fee'])) . '（税込）' : 'お問い合わせください'), active_shipping());
+    return $list ? implode('<br>', $list) : '';
+}
+
+function page_shipping(): void
+{
+    $rows = '';
+    foreach (active_shipping() as $r) {
+        $rows .= '<tr class="border-b border-line"><td class="px-3 py-3">' . e($r['name']) . '</td>'
+            . '<td class="whitespace-nowrap px-3 py-3 text-right">' . ($r['fee'] !== null ? e(format_price((int) $r['fee'])) : '—') . '</td>'
+            . '<td class="px-3 py-3 text-muted">' . e((string) $r['note']) . '</td></tr>';
+    }
+    $table = $rows
+        ? '<div class="mt-10 overflow-x-auto"><table class="w-full min-w-[26rem] text-sm"><thead class="border-b border-line text-left text-xs text-muted"><tr>'
+            . '<th class="px-3 py-2 font-medium">配送方法</th><th class="px-3 py-2 text-right font-medium">送料（税込）</th><th class="px-3 py-2 font-medium">お届けのしかた</th></tr></thead><tbody>'
+            . $rows . '</tbody></table></div>'
+        : '<p class="mt-10 text-center text-sm text-muted">' . e(LEGAL_TBD) . '</p>';
+    $info = [
+        '送料について' => '商品ごとに、上記のいずれかの配送方法でお届けします。どの配送方法になるかは、各商品ページに表示しています。',
+        '発送の時期' => legal_value(SELLER_INFO['delivery']),
+        'お届け先' => '日本国内のみとなります。',
+        '配送状況の確認' => '発送後、お問い合わせ番号をお知らせします。配送業者のホームページで配送状況を確認できます。',
+    ];
+    $dl = '';
+    foreach ($info as $k => $v) {
+        $dl .= '<div class="grid gap-1 py-4 sm:grid-cols-[10rem_1fr] sm:gap-6"><dt class="font-medium text-leather">' . e($k) . '</dt><dd>' . ($k === '発送の時期' ? $v : e($v)) . '</dd></div>';
+    }
+    legal_page('/legal/shipping', '配送・送料', 'Shipping', $table . '<dl class="mt-10 divide-y divide-line border-y border-line text-sm leading-7">' . $dl . '</dl>');
 }
 
 function page_returns(): void
