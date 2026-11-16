@@ -48,6 +48,54 @@
     });
   }
 
+  // ---- 「これまでに作ったもん」の自動スライド（PCの幅のとき）
+  document.querySelectorAll("[data-autoslide]").forEach(function (box) {
+    var track = box.querySelector("[data-autoslide-track]");
+    var controls = box.querySelector("[data-autoslide-controls]");
+    var toggle = box.querySelector("[data-autoslide-toggle]");
+    if (!track || !controls) return;
+    var wide = window.matchMedia("(min-width: 768px)");
+    var calm = window.matchMedia("(prefers-reduced-motion: reduce)");
+    var timer = null, hovering = false, stopped = calm.matches;
+    var step = function () {
+      var li = track.querySelector("li");
+      var gap = parseFloat(getComputedStyle(track.querySelector("ul")).columnGap) || 16;
+      return li ? li.getBoundingClientRect().width + gap : 280;
+    };
+    var go = function (dir) {
+      var max = track.scrollWidth - track.clientWidth;
+      if (max <= 4) return;
+      var to = track.scrollLeft + dir * step();
+      if (dir > 0 && track.scrollLeft >= max - 4) to = 0;          // 最後まで行ったら先頭へ
+      if (dir < 0 && track.scrollLeft <= 4) to = max;              // 先頭で戻したら最後へ
+      track.scrollTo({ left: to, behavior: calm.matches ? "auto" : "smooth" });
+    };
+    var run = function () {
+      clearInterval(timer);
+      timer = null;
+      if (wide.matches && !stopped && !hovering && !document.hidden && track.scrollWidth > track.clientWidth + 4) {
+        timer = setInterval(function () { go(1); }, 3500);
+      }
+    };
+    var setStopped = function (v) {
+      stopped = v;
+      toggle.textContent = v ? "▶" : "❚❚";
+      toggle.setAttribute("aria-label", v ? "自動スライドを再開する" : "自動スライドを止める");
+      run();
+    };
+    controls.hidden = false;
+    setStopped(stopped);
+    box.querySelector("[data-autoslide-prev]").addEventListener("click", function () { go(-1); });
+    box.querySelector("[data-autoslide-next]").addEventListener("click", function () { go(1); });
+    toggle.addEventListener("click", function () { setStopped(!stopped); });
+    track.addEventListener("mouseenter", function () { hovering = true; run(); });
+    track.addEventListener("mouseleave", function () { hovering = false; run(); });
+    track.addEventListener("focusin", function () { hovering = true; run(); });
+    track.addEventListener("focusout", function () { hovering = false; run(); });
+    document.addEventListener("visibilitychange", run);
+    if (wide.addEventListener) wide.addEventListener("change", run);
+  });
+
   // ---- 商品写真ギャラリー
   document.querySelectorAll("[data-gallery]").forEach(function (root) {
     var track = root.querySelector("[data-gallery-track]");

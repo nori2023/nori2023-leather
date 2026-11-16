@@ -154,13 +154,19 @@ function works_strip(): string
     if (!$items) {
         return '';
     }
-    $h = '<div class="-mx-5 overflow-x-auto px-5 pb-2 no-scrollbar"><ul class="flex w-max snap-x snap-mandatory gap-3 sm:gap-4">';
+    $h = '<div data-autoslide class="relative"><div data-autoslide-track class="-mx-5 overflow-x-auto px-5 pb-2 no-scrollbar" aria-label="これまでに作ったもんの写真" tabindex="0"><ul class="flex w-max snap-x snap-mandatory gap-3 sm:gap-4">';
     foreach ($items as ['src' => $src, 'alt' => $alt, 'caption' => $caption]) {
         $h .= '<li class="w-[58vw] max-w-[260px] shrink-0 snap-start"><div class="relative aspect-[4/5] overflow-hidden rounded-card bg-sand">'
             . '<img src="' . e($src) . '" alt="' . e($alt) . '" loading="lazy" decoding="async" data-zoom class="absolute inset-0 h-full w-full object-cover">'
             . '</div><p class="mt-2 text-center text-xs text-muted">' . e($caption) . '</p></li>';
     }
-    return $h . '</ul></div>';
+    // 自動スライド（PC）。止める・戻す・進むのボタンつき。動きは assets/site.js
+    $btn = 'inline-flex h-10 w-10 items-center justify-center rounded-full border border-line bg-white/90 text-leather shadow-sm hover:bg-white';
+    return $h . '</ul></div>'
+        . '<div data-autoslide-controls hidden class="mt-3 hidden items-center justify-end gap-2 md:flex">'
+        . '<button type="button" data-autoslide-prev class="' . $btn . '" aria-label="前の写真へ">‹</button>'
+        . '<button type="button" data-autoslide-toggle class="' . $btn . ' text-xs" aria-label="自動スライドを止める">❚❚</button>'
+        . '<button type="button" data-autoslide-next class="' . $btn . '" aria-label="次の写真へ">›</button></div></div>';
 }
 
 /** 商品写真ギャラリー（動きは assets/site.js） */
