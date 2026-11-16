@@ -9,6 +9,10 @@ DirectoryIndex index.php
   # 設置フォルダが /nori2023/ 以外の場合はここを書き換える
   RewriteBase /nori2023/
 
+  # 管理画面のベーシック認証のため、Authorization ヘッダーを PHP に渡す
+  RewriteCond %{HTTP:Authorization} .
+  RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
   # 常に https で表示する（エックスサーバー推奨の書き方。手元の確認環境 localhost は除外）
   RewriteCond %{HTTPS} !on
   RewriteCond %{HTTP_HOST} !^(localhost|127\.0\.0\.1)(:\d+)?$

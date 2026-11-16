@@ -12,11 +12,13 @@ const ADMIN_NAV = [
     ['/admin/settings', 'ページ設定'],
     ['/admin/instagram', 'Instagram'],
     ['/admin/logs', '操作履歴'],
+    ['/admin/security', 'セキュリティ'],
     ['/admin/account', 'アカウント'],
 ];
 
 const ADMIN_NOTICES = [
     'saved' => '保存しました。',
+    'sent' => 'テストのコードをメールで送りました。',
     'created' => '登録しました。',
     'deleted' => '削除しました。',
     'synced' => 'Instagramを更新しました。',

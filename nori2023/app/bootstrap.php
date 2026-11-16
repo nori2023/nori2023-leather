@@ -21,6 +21,7 @@ require APP_DIR . '/lib/auth.php';
 require APP_DIR . '/lib/products.php';
 require APP_DIR . '/lib/images.php';
 require APP_DIR . '/lib/instagram.php';
+require APP_DIR . '/lib/security.php';
 
 set_exception_handler(function (Throwable $e): void {
     error_log('[nori2023] ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());

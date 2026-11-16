@@ -9,12 +9,22 @@ function route_admin(string $path): void
     start_admin_session();
     db_migrate();
 
+    // パスワード・合言葉を忘れたときの入口（再設定キーで守る）はベーシック認証の外に置く
+    if ($path === '/admin/reset') {
+        admin_password_reset();
+        return;
+    }
+    if ($path === '/admin/security/basic-test') {
+        admin_basic_test();
+        return;
+    }
+    require_basic_auth();
     if ($path === '/admin/login') {
         admin_login();
         return;
     }
-    if ($path === '/admin/reset') {
-        admin_password_reset();
+    if ($path === '/admin/login/code') {
+        admin_login_code();
         return;
     }
     if (!current_admin()) {
@@ -70,6 +80,12 @@ function route_admin(string $path): void
         $path === '/admin/instagram/token/delete' && $post => admin_instagram_token_delete(),
         $path === '/admin/logs' => admin_logs(),
         $path === '/admin/account' => $post ? admin_account_save() : admin_account(),
+        $path === '/admin/security' => admin_security(),
+        $path === '/admin/security/basic' && $post => admin_security_basic_save(),
+        $path === '/admin/security/basic/off' && $post => admin_security_basic_off(),
+        $path === '/admin/security/2fa/send' && $post => admin_security_2fa_send(),
+        $path === '/admin/security/2fa/verify' && $post => admin_security_2fa_verify(),
+        $path === '/admin/security/2fa/off' && $post => admin_security_2fa_off(),
         default => admin_not_found(),
     };
 }
@@ -94,7 +110,19 @@ function admin_login(): void
         if (login_locked(client_ip(), $email)) {
             $error = 'ログインの失敗が続いたため、しばらくログインできません。15分ほど待ってからお試しください。';
         } elseif (attempt_login($email, (string) ($_POST['password'] ?? ''))) {
-            redirect('/admin');
+            if (twofa_enabled()) {
+                // パスワードは合っていた → メールのコードを確かめるまでログインにしない
+                $pending = $_SESSION['admin'];
+                unset($_SESSION['admin']);
+                if (!twofa_issue($pending, 'login')) {
+                    unset($_SESSION['twofa']);
+                    $error = '確認コードのメールを送れませんでした。しばらくしてからお試しください。続く場合は、再設定キーで2段階認証を解除できます。';
+                } else {
+                    redirect('/admin/login/code');
+                }
+            } else {
+                redirect('/admin');
+            }
         } else {
             $error = 'メールアドレスかパスワードが違います。';
         }
@@ -157,11 +185,14 @@ function admin_password_reset(): void
                 db_exec('UPDATE admin_users SET password_hash = ? WHERE id = ?', [password_hash($pw, PASSWORD_DEFAULT), $target['id']]);
                 db_exec("DELETE FROM login_attempts WHERE ip = ? OR email IN (?, 'password-reset')", [$ip, $target['email']]);
                 @unlink(RESET_KEY_FILE);
+                $hadSecurity = twofa_enabled() || basic_auth_cfg();
+                security_disable_all('password-reset');
                 audit('admin.password_reset', $target['id'], ['email' => $target['email']]);
                 render_admin('パスワードの再設定', '<div class="mx-auto max-w-md ' . A_CARD . ' space-y-3 text-sm leading-7">'
                     . '<p class="font-medium text-green-900">パスワードを新しくしました。</p>'
                     . '<p>ログインのメールアドレスは <strong class="break-all">' . e($target['email']) . '</strong> です。</p>'
                     . '<p>再設定用のファイルは自動で消しました。念のため、サーバーの app フォルダに password_reset.key が残っていないか確認してください。</p>'
+                    . ($hadSecurity ? '<p class="rounded border border-amber-300 bg-amber-50 px-3 py-2">締め出しを防ぐため、<strong>2段階認証と管理画面の合言葉（ベーシック認証）をいったん解除</strong>しました。ログイン後、「セキュリティ」から設定し直してください。</p>' : '')
                     . '<a href="' . e(url('/admin/login')) . '" class="' . A_BTN_PRIMARY . ' w-full">ログイン画面へ</a></div>', null, true);
                 return;
             }

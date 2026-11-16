@@ -495,3 +495,192 @@ function admin_workshop_photo_delete(string $wsId, string $photoId): void
     }
     redirect('/admin/workshops/' . $wsId . '?notice=deleted');
 }
+
+// ================================================================== ログイン時の確認コード（2段階認証）
+function admin_login_code(): void
+{
+    if (current_admin()) {
+        redirect('/admin');
+    }
+    $p = $_SESSION['twofa'] ?? null;
+    if (!$p || $p['purpose'] !== 'login') {
+        redirect('/admin/login');
+    }
+    $error = null;
+    $notice = null;
+    if (is_post()) {
+        verify_csrf();
+        if (($_POST['action'] ?? '') === 'resend') {
+            if (time() - $p['sent_at'] < TWOFA_RESEND_WAIT) {
+                $error = 'もう少し待ってから再送してください（1分に1回まで）。';
+            } elseif (twofa_issue($p['admin'], 'login')) {
+                $notice = '新しいコードを送りました。前のコードは使えません。';
+            } else {
+                $error = 'メールを送れませんでした。';
+            }
+        } else {
+            $r = twofa_verify(post_str('code', 10));
+            if ($r['ok']) {
+                session_regenerate_id(true);
+                $_SESSION['admin'] = $r['admin'];
+                $_SESSION['csrf'] = bin2hex(random_bytes(32));
+                audit('admin.login_2fa');
+                redirect('/admin');
+            }
+            if ($r['reset']) {
+                redirect('/admin/login');
+            }
+            $error = $r['error'];
+        }
+    }
+    $mask = preg_replace('/(?<=.).(?=[^@]*@)/u', '•', $p['admin']['email']);
+    $body = '<div class="mx-auto max-w-sm">' . ($notice ? '<p class="mb-4 rounded border border-green-700/30 bg-green-50 px-4 py-3 text-sm text-green-900">' . e($notice) . '</p>' : '')
+        . '<form method="post" data-autofill class="' . A_CARD . ' space-y-4">' . csrf_field()
+        . '<p class="text-sm leading-6"><strong class="break-all">' . e($mask) . '</strong> に、6桁の確認コードを送りました。10分以内に入力してください。</p>'
+        . admin_field('確認コード', '<input id="code" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="one-time-code" class="' . A_INPUT . ' text-center font-mono text-2xl tracking-[0.4em]">', 'code')
+        . '<button class="' . A_BTN_PRIMARY . ' w-full">ログイン</button></form>'
+        . '<form method="post" class="mt-4 text-center">' . csrf_field() . '<input type="hidden" name="action" value="resend">'
+        . '<button class="min-h-10 text-sm text-leather underline">メールが届かないときは、コードを再送</button></form>'
+        . '<p class="mt-2 text-center text-xs text-muted">迷惑メールのフォルダも確認してください。</p></div>';
+    render_admin('確認コードの入力', $body, $error, true);
+}
+
+// ================================================================== セキュリティ設定
+function admin_security(?string $error = null): void
+{
+    $basic = basic_auth_cfg();
+    $twofa = twofa_enabled();
+    $pending = ($_SESSION['twofa']['purpose'] ?? '') === 'enable';
+    $on = static fn (bool $v) => $v ? '<span class="rounded bg-green-50 px-2 py-0.5 text-xs text-green-900">オン</span>' : '<span class="rounded bg-stone-100 px-2 py-0.5 text-xs">オフ</span>';
+    $pwField = static fn (string $id) => admin_field('今のログインパスワード', '<input id="' . $id . '" name="current" type="password" required autocomplete="current-password" class="' . A_INPUT . '">', $id);
+
+    // 2段階認証
+    $h = '<section class="' . A_CARD . ' space-y-4"><h2 class="flex items-center gap-2 font-serif text-lg text-leather">2段階認証（メールの確認コード） ' . $on($twofa) . '</h2>'
+        . '<p class="text-sm leading-6 text-muted">ログインのとき、パスワードのあとに、<strong>' . e(current_admin()['email']) . '</strong> に届く6桁のコードを入れます。パスワードが漏れても、メールを見られる人しか入れません。</p>';
+    if ($twofa) {
+        $h .= '<form method="post" action="' . e(url('/admin/security/2fa/off')) . '" class="space-y-3 border-t border-line pt-4" data-confirm="2段階認証をやめます。よろしいですか？">' . csrf_field()
+            . $pwField('cur2fa') . '<button class="' . A_BTN_DANGER . '">2段階認証をやめる</button></form>';
+    } elseif ($pending) {
+        $h .= '<form method="post" action="' . e(url('/admin/security/2fa/verify')) . '" class="space-y-3 border-t border-line pt-4">' . csrf_field()
+            . '<p class="text-sm">テストのコードを送りました。メールに書いてある6桁を入れると、2段階認証がオンになります。</p>'
+            . admin_field('確認コード', '<input id="code" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="one-time-code" class="' . A_INPUT . ' text-center font-mono text-xl tracking-[0.3em]">', 'code')
+            . '<button class="' . A_BTN_PRIMARY . '">確かめてオンにする</button></form>';
+    } else {
+        $h .= '<form method="post" action="' . e(url('/admin/security/2fa/send')) . '" class="border-t border-line pt-4">' . csrf_field()
+            . '<p class="mb-3 text-sm">まずテストのコードをメールで送ります。届いたのを確かめてからオンになるので、メールが届かずに締め出されることはありません。</p>'
+            . '<button class="' . A_BTN_PRIMARY . '">テストのコードを送る</button></form>';
+    }
+    $h .= '</section>';
+
+    // ベーシック認証
+    $h .= '<section class="' . A_CARD . ' mt-6 space-y-4"><h2 class="flex items-center gap-2 font-serif text-lg text-leather">管理画面の入口の合言葉（ベーシック認証） ' . $on((bool) $basic) . '</h2>'
+        . '<p class="text-sm leading-6 text-muted">管理画面を開くと、ログイン画面より先に、ブラウザの小さな窓でユーザー名と合言葉を聞かれるようになります。ログインのパスワードとは<strong>別のもの</strong>にしてください。</p>';
+    if ($basic) {
+        $h .= '<p class="text-sm">ユーザー名：<strong class="font-mono">' . e($basic['user']) . '</strong></p>'
+            . '<form method="post" action="' . e(url('/admin/security/basic/off')) . '" class="space-y-3 border-t border-line pt-4" data-confirm="入口の合言葉をやめます。よろしいですか？">' . csrf_field()
+            . $pwField('curbasic') . '<button class="' . A_BTN_DANGER . '">入口の合言葉をやめる</button></form>';
+    } else {
+        $h .= '<form method="post" action="' . e(url('/admin/security/basic')) . '" class="grid gap-3 border-t border-line pt-4 sm:grid-cols-2">' . csrf_field()
+            . admin_field('ユーザー名', '<input id="buser" name="user" required pattern="[A-Za-z0-9_.-]{4,32}" maxlength="32" autocomplete="off" autocapitalize="off" class="' . A_INPUT . ' font-mono">', 'buser', '英数字4〜32文字（例：nori-admin）')
+            . '<div></div>'
+            . admin_field('合言葉', '<input id="bpw" name="password" type="password" required minlength="10" autocomplete="new-password" class="' . A_INPUT . '">', 'bpw', '10文字以上・英字と数字をまぜる')
+            . admin_field('合言葉（確認）', '<input id="bpw2" name="password2" type="password" required minlength="10" autocomplete="new-password" class="' . A_INPUT . '">', 'bpw2')
+            . '<p class="text-xs leading-5 text-muted sm:col-span-2">「設定する」を押すと、すぐにブラウザが合言葉を聞いてきます。いま決めたユーザー名と合言葉を入れて、ちゃんと入れたらオンになります。（入れなかったら自動でオフのままです）</p>'
+            . '<div class="sm:col-span-2"><button class="' . A_BTN_PRIMARY . '">設定する</button></div></form>';
+    }
+    $h .= '</section>'
+        . '<p class="mt-6 text-xs leading-6 text-muted">ログインのパスワードや合言葉を忘れたときは、サーバーに再設定キーを置いて <span class="font-mono">' . e(url('/admin/reset')) . '</span> から直せます（そのとき、2段階認証と入口の合言葉はいったん解除されます）。<br>'
+        . 'ログインは、同じ場所から5回・同じアカウントへ10回失敗すると15分ロックされます。</p>';
+    render_admin('セキュリティ', $h, $error);
+}
+
+function security_check_password(): bool
+{
+    $u = db_one('SELECT password_hash FROM admin_users WHERE id = ?', [current_admin()['id']]);
+    return $u && password_verify((string) ($_POST['current'] ?? ''), $u['password_hash']);
+}
+
+function admin_security_2fa_send(): void
+{
+    if (!twofa_issue(current_admin(), 'enable')) {
+        unset($_SESSION['twofa']);
+        admin_security('テストのメールを送れませんでした。時間をおいてお試しください。');
+        return;
+    }
+    redirect('/admin/security?notice=sent');
+}
+
+function admin_security_2fa_verify(): void
+{
+    if (($_SESSION['twofa']['purpose'] ?? '') !== 'enable') {
+        redirect('/admin/security');
+    }
+    $r = twofa_verify(post_str('code', 10));
+    if (!$r['ok']) {
+        admin_security($r['error']);
+        return;
+    }
+    set_setting('security.2fa', ['enabled' => true], current_admin()['email']);
+    audit('security.2fa_on');
+    redirect('/admin/security?notice=saved');
+}
+
+function admin_security_2fa_off(): void
+{
+    if (!security_check_password()) {
+        admin_security('ログインパスワードが違います。');
+        return;
+    }
+    set_setting('security.2fa', ['enabled' => false], current_admin()['email']);
+    audit('security.2fa_off');
+    redirect('/admin/security?notice=saved');
+}
+
+function admin_security_basic_save(): void
+{
+    $user = post_str('user', 32);
+    $pw = (string) ($_POST['password'] ?? '');
+    if (!preg_match('/^[A-Za-z0-9_.-]{4,32}$/', $user)) {
+        admin_security('ユーザー名は英数字4〜32文字にしてください。');
+        return;
+    }
+    if ($pw !== (string) ($_POST['password2'] ?? '')) {
+        admin_security('確認用の合言葉が一致しません。');
+        return;
+    }
+    if ($p = password_problem($pw)) {
+        admin_security(str_replace('パスワード', '合言葉', $p));
+        return;
+    }
+    // まだオンにしない：ブラウザから正しく送られてくるのを確かめてからオンにする
+    $_SESSION['basic_pending'] = ['user' => $user, 'hash' => password_hash($pw, PASSWORD_DEFAULT), 'at' => time()];
+    redirect('/admin/security/basic-test');
+}
+
+/** ベーシック認証の試し（セッションに保留中の設定がある人だけ） */
+function admin_basic_test(): void
+{
+    $p = $_SESSION['basic_pending'] ?? null;
+    if (!current_admin() || !$p || time() - $p['at'] > 600) {
+        unset($_SESSION['basic_pending']);
+        redirect('/admin/security');
+    }
+    if (!basic_auth_check($p)) {
+        basic_auth_deny('Nori2023 admin', 'いま決めたユーザー名と合言葉を入れてください。うまくいかないときは <a href="' . e(url('/admin/security')) . '">セキュリティの画面に戻る</a> と、オフのままになります。');
+    }
+    unset($_SESSION['basic_pending']);
+    set_setting('security.basic', ['user' => $p['user'], 'hash' => $p['hash']], current_admin()['email']);
+    audit('security.basic_on', null, ['user' => $p['user']]);
+    redirect('/admin/security?notice=saved');
+}
+
+function admin_security_basic_off(): void
+{
+    if (!security_check_password()) {
+        admin_security('ログインパスワードが違います。');
+        return;
+    }
+    set_setting('security.basic', [], current_admin()['email']);
+    audit('security.basic_off');
+    redirect('/admin/security?notice=saved');
+}
