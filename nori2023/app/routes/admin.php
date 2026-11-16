@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require APP_DIR . '/views/admin_layout.php';
 require APP_DIR . '/routes/admin_content.php';
+require_once APP_DIR . '/lib/security.php'; // bootstrap.php が古いままでも動くように
 
 function route_admin(string $path): void
 {
