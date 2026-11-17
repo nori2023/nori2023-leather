@@ -78,9 +78,10 @@ function product_card(array $p, bool $eager = false): string
         $h .= '<span class="absolute left-2 top-2 rounded-[2px] bg-charcoal/85 px-2 py-1 text-[0.68rem] tracking-[0.1em] text-ivory">購入手続き中</span>';
     }
     $h .= '</div><div class="mt-3 px-0.5">';
-    if ($p['category_name']) {
-        $h .= '<p class="text-[0.68rem] tracking-[0.15em] text-camel">' . e($p['category_name']) . '</p>';
-    }
+    // カテゴリー（左）と品番（右）
+    $h .= '<p class="flex flex-wrap items-baseline justify-between gap-x-2 text-[0.68rem]">'
+        . '<span class="tracking-[0.15em] text-camel">' . e((string) $p['category_name']) . '</span>'
+        . '<span class="shrink-0 font-mono tracking-normal text-muted">品番 ' . e($p['code']) . '</span></p>';
     $h .= '<h3 class="mt-0.5 font-sans text-[0.92rem] font-medium leading-6 tracking-[0.04em] text-charcoal">' . e($p['name']) . '</h3>';
     if ($soldOut && !empty($p['sold_note'])) {
         $h .= '<p class="mt-1 line-clamp-2 text-[0.75rem] leading-5 text-muted">' . e($p['sold_note']) . '</p>';

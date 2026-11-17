@@ -234,7 +234,7 @@ function page_product(string $slug): void
         $info .= '<p class="text-xs tracking-[0.18em] text-camel">' . e($p['category_name']) . '</p>';
     }
     $info .= '<h1 class="mt-2 text-[1.4rem] sm:text-[1.7rem]">' . e($p['name']) . '</h1>'
-        . '<p class="mt-1 text-xs text-muted">商品番号：' . e($p['code']) . '</p>';
+        . '<p class="mt-1 text-xs text-muted">品番：' . e($p['code']) . '</p>';
     if (!$soldOut) {
         $info .= '<p class="mt-6 font-serif text-[1.6rem] text-leather">' . e(format_price($p['price'])) . '<span class="ml-1 font-sans text-xs text-muted">（税込）</span></p>';
     }
