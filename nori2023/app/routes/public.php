@@ -217,6 +217,7 @@ function page_shop(): void
 // ------------------------------------------------------------------ 商品詳細
 function page_product(string $slug): void
 {
+    release_expired_reservations();
     $p = get_public_product($slug);
     if (!$p) {
         render_not_found();
@@ -315,12 +316,14 @@ function purchase_area(array $p): string
             . '<p class="font-medium text-leather">いま、ほかのお客さんが購入手続きしよります</p>'
             . '<p class="mt-1 text-muted">手続きが終わらんかったら、また販売中に戻りますけぇね。</p></div>';
     }
-    // STEP 3（在庫確保・決済）が完成し sales.enabled=true になるまで購入不可
-    $enabled = sales_enabled();
-    $h = '<div class="mt-8"><button type="button" disabled class="flex min-h-14 w-full items-center justify-center rounded-[2px] bg-leather text-[1rem] tracking-[0.15em] text-ivory disabled:cursor-not-allowed disabled:opacity-50">'
-        . ($enabled ? '購入手続きへ進む' : 'ネットでの購入は、いま準備しよります') . '</button>';
-    if (!$enabled) {
-        $h .= '<p class="mt-3 text-center text-xs text-muted">欲しい方は <a href="' . e(url('/contact')) . '" class="text-leather underline underline-offset-4">お問い合わせ</a> から声かけてつかぁさい。</p>';
+    // 決済設定が「公開」、またはテスト担当の端末のときだけ購入できる
+    $enabled = checkout_open();
+    if ($enabled) {
+        $h = '<div class="mt-8"><a href="' . e(url('/checkout/' . $p['slug'])) . '" class="flex min-h-14 w-full items-center justify-center rounded-[2px] bg-leather text-[1rem] tracking-[0.15em] text-ivory hover:bg-charcoal">購入手続きへ進む</a>'
+            . '<p class="mt-3 text-center text-xs text-muted">お支払いはクレジットカード（一括）です。</p>';
+    } else {
+        $h = '<div class="mt-8"><button type="button" disabled class="flex min-h-14 w-full items-center justify-center rounded-[2px] bg-leather text-[1rem] tracking-[0.15em] text-ivory disabled:cursor-not-allowed disabled:opacity-50">ネットでの購入は、いま準備しよります</button>'
+            . '<p class="mt-3 text-center text-xs text-muted">欲しい方は <a href="' . e(url('/contact')) . '" class="text-leather underline underline-offset-4">お問い合わせ</a> から声かけてつかぁさい。</p>';
     }
     $h .= '<p class="mt-3 text-center text-xs text-muted">' . e(MAKER_SELLER_TEXT) . '</p>';
     return $h . '</div>';

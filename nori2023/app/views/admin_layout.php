@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 const ADMIN_NAV = [
     ['/admin', 'ダッシュボード'],
+    ['/admin/orders', '注文'],
     ['/admin/products', '完成品（1点もの）'],
     ['/admin/categories', 'カテゴリー'],
     ['/admin/shipping', '送料設定'],
@@ -12,6 +13,7 @@ const ADMIN_NAV = [
     ['/admin/settings', 'ページ設定'],
     ['/admin/instagram', 'Instagram'],
     ['/admin/logs', '操作履歴'],
+    ['/admin/payment', '決済設定'],
     ['/admin/security', 'セキュリティ'],
     ['/admin/account', 'アカウント'],
 ];

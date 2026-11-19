@@ -89,3 +89,9 @@
   .reveal { animation: reveal-up linear both; animation-timeline: view(); animation-range: entry 0% entry 35%; }
   @keyframes reveal-up { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
 }
+
+/* ゼウスのカード入力欄：登録済みカードの選択は使わない（毎回入力） */
+label[for="zeus_token_action_type_quick"], label[for="zeus_token_action_type_new"],
+#zeus_token_action_type_quick, #zeus_token_action_type_new, #zeus_registerd_card_area { display: none !important; }
+.zeus-area input, .zeus-area select { min-height: 3rem; font-size: 16px; border: 1px solid var(--color-line); border-radius: 4px; background: #fff; padding: 0 .75rem; }
+.zeus-area label { display: block; margin-top: .75rem; font-size: .875rem; }

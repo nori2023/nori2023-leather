@@ -16,4 +16,9 @@ if ($path === '/admin' || str_starts_with($path, '/admin/')) {
 }
 
 require APP_DIR . '/routes/public.php';
+if ($path === '/checkout' || str_starts_with($path, '/checkout/')) {
+    require APP_DIR . '/routes/checkout.php';
+    route_checkout($path);
+    exit;
+}
 route_public($path);

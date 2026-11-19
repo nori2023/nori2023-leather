@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 require APP_DIR . '/views/admin_layout.php';
 require APP_DIR . '/routes/admin_content.php';
+require APP_DIR . '/routes/admin_shop.php';
 require_once APP_DIR . '/lib/security.php'; // bootstrap.php が古いままでも動くように
 
 function route_admin(string $path): void
@@ -56,6 +57,12 @@ function route_admin(string $path): void
         $path === '/admin/shipping' && !$post => admin_shipping(),
         (bool) preg_match('#^/admin/shipping(?:/([0-9a-f-]{36}))?$#', $path, $m) && $post => admin_shipping_save($m[1] ?? null),
         $path === '/admin/settings' => $post ? admin_settings_save() : admin_settings(),
+        $path === '/admin/orders' => admin_orders(),
+        (bool) preg_match('#^/admin/orders/([0-9a-f-]{36})$#', $path, $m) => admin_order_detail($m[1]),
+        (bool) preg_match('#^/admin/orders/([0-9a-f-]{36})/ship$#', $path, $m) && $post => admin_order_ship($m[1]),
+        (bool) preg_match('#^/admin/orders/([0-9a-f-]{36})/cancel$#', $path, $m) && $post => admin_order_cancel($m[1]),
+        $path === '/admin/payment' => $post ? admin_payment_save() : admin_payment(),
+        $path === '/admin/payment/tester' && $post => admin_payment_tester(),
         $path === '/admin/settings/analytics' && $post => admin_analytics_save(),
         $path === '/admin/settings/hero-image' && $post => admin_hero_upload(),
         $path === '/admin/settings/hero-image/reset' && $post => admin_hero_reset(),
@@ -227,9 +234,9 @@ function admin_dashboard(): void
         ['販売中の商品', $count("SELECT COUNT(*) FROM products WHERE status IN ('on_sale','reserved')"), '/admin/products?status=on_sale'],
         ['SOLD OUT', $count("SELECT COUNT(*) FROM products WHERE status = 'sold_out'"), '/admin/products?status=sold_out'],
         ['非公開（下書き）', $count("SELECT COUNT(*) FROM products WHERE status = 'draft'"), '/admin/products?status=draft'],
-        ['新規注文', $count("SELECT COUNT(*) FROM orders WHERE status = 'received'"), null],
-        ['決済待ち', $count("SELECT COUNT(*) FROM orders WHERE status = 'awaiting_payment'"), null],
-        ['未発送', $count("SELECT COUNT(*) FROM orders WHERE status IN ('paid','in_production','completed')"), null],
+        ['発送待ちの注文', $count("SELECT COUNT(*) FROM orders WHERE order_type = 'product' AND status = 'paid'"), '/admin/orders?status=todo'],
+        ['決済手続き中', $count("SELECT COUNT(*) FROM orders WHERE status = 'awaiting_payment'"), '/admin/orders'],
+        ['発送済み', $count("SELECT COUNT(*) FROM orders WHERE status = 'shipped'"), '/admin/orders?status=all'],
         ['名刺入れ受注', $count("SELECT COUNT(*) FROM orders WHERE order_type = 'custom' AND status NOT IN ('shipped','cancelled')"), null],
         ['ワークショップ申込', $count("SELECT COUNT(*) FROM workshop_reservations WHERE status = 'confirmed'"), null],
     ];
@@ -240,7 +247,7 @@ function admin_dashboard(): void
     }
     $h .= '</ul><div class="mt-6 flex flex-wrap gap-3"><a href="' . e(url('/admin/products/new')) . '" class="' . A_BTN_PRIMARY . '">＋ 完成品を登録する</a>'
         . '<a href="' . e(url('/admin/settings')) . '" class="' . A_BTN_GHOST . '">ページ設定</a></div>'
-        . '<p class="mt-8 rounded border border-amber-300 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">オンライン購入（STEP 3）は未実装のため、販売中の商品も購入ボタンは押せません。注文・受注制作・ワークショップの件数は、各機能の完成後に表示されます。</p>';
+        . (zeus_cfg()['mode'] !== 'live' ? '<p class="mt-8 rounded border border-amber-300 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">いまはネット購入を受け付けていません（決済設定：' . e(['off' => '停止', 'tester' => 'テスト担当の端末だけ'][zeus_cfg()['mode']] ?? '') . '）。<a href="' . e(url('/admin/payment')) . '" class="underline">決済設定</a></p>' : '');
     render_admin('ダッシュボード', $h);
 }
 

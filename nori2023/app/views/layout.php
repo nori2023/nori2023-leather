@@ -8,7 +8,10 @@ declare(strict_types=1);
 function render_page(array $meta, string $body, int $status = 200): void
 {
     http_response_code($status);
-    send_security_headers();
+    send_security_headers(false, $meta['csp'] ?? []);
+    if (!empty($meta['nostore'])) {
+        header('Cache-Control: no-store');
+    }
     header('Content-Type: text/html; charset=utf-8');
 
     $title = isset($meta['title']) ? $meta['title'] . '｜' . SITE_NAME : SITE_NAME . '｜' . SITE_BRAND . ' 手仕事の1点もの革小物';
@@ -46,6 +49,10 @@ function render_page(array $meta, string $body, int $status = 200): void
 <link rel="stylesheet" href="<?= e(asset('assets/app.css')) ?>">
 <?php foreach ($meta['jsonLd'] ?? [] as $ld): ?><?= json_ld($ld) ?>
 <?php endforeach ?>
+<?php foreach ($meta['headStyles'] ?? [] as $href): ?><link rel="stylesheet" href="<?= e($href) ?>">
+<?php endforeach ?>
+<?php foreach ($meta['headScripts'] ?? [] as $sc): ?><script src="<?= e($sc['src']) ?>"<?php foreach ($sc['data'] ?? [] as $k => $v): ?> data-<?= e($k) ?>="<?= e((string) $v) ?>"<?php endforeach ?>></script>
+<?php endforeach ?>
 </head>
 <body class="flex min-h-full flex-col">
 <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:bg-ivory focus:px-4 focus:py-2">本文へスキップ</a>
@@ -55,7 +62,7 @@ function render_page(array $meta, string $body, int $status = 200): void
 </main>
 <?= site_footer() ?>
 <script src="<?= e(asset('assets/site.js')) ?>" defer></script>
-<?php if ($gaId = ga_measurement_id()): ?>
+<?php if (empty($meta['noAnalytics']) && ($gaId = ga_measurement_id())): ?>
 <script async src="https://www.googletagmanager.com/gtag/js?id=<?= e($gaId) ?>"></script>
 <script src="<?= e(asset('assets/ga.js')) ?>" data-ga-id="<?= e($gaId) ?>"></script>
 <?php endif; ?>

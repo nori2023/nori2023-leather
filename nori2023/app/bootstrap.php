@@ -22,6 +22,8 @@ require APP_DIR . '/lib/products.php';
 require APP_DIR . '/lib/images.php';
 require APP_DIR . '/lib/instagram.php';
 require_once APP_DIR . '/lib/security.php';
+require APP_DIR . '/lib/zeus.php';
+require APP_DIR . '/lib/orders.php';
 
 set_exception_handler(function (Throwable $e): void {
     error_log('[nori2023] ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
@@ -48,7 +50,7 @@ function is_installed(): bool
 }
 
 /** 共通のセキュリティヘッダー */
-function send_security_headers(bool $admin = false): void
+function send_security_headers(bool $admin = false, array $extra = []): void
 {
     header('X-Content-Type-Options: nosniff');
     header('Referrer-Policy: strict-origin-when-cross-origin');
@@ -56,11 +58,15 @@ function send_security_headers(bool $admin = false): void
     header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
     // 読み込んでよいのは自サイトと Google Fonts だけ（不正なスクリプトの埋め込み対策）
     // 公開ページは Google アナリティクス（GA4）の読み込み・送信先を許可する（管理画面は許可しない）
+    // $extra：決済ページだけ、ゼウスとカード会社の本人認証画面を追加で許可する
     $ga = $admin ? '' : ' https://www.googletagmanager.com';
     $gaConnect = $admin ? '' : ' https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com';
-    header("Content-Security-Policy: default-src 'self'; script-src 'self'{$ga}; style-src 'self' https://fonts.googleapis.com; "
-        . "font-src https://fonts.gstatic.com; img-src 'self' data:{$gaConnect}; connect-src 'self'{$gaConnect}; object-src 'none'; base-uri 'self'; "
-        . "form-action 'self'; frame-ancestors " . ($admin ? "'none'" : "'self'"));
+    $add = static fn (string $k): string => !empty($extra[$k]) ? ' ' . implode(' ', $extra[$k]) : '';
+    $styleInline = !empty($extra['style_inline']) ? " 'unsafe-inline'" : '';
+    $frame = !empty($extra['frame']) ? 'frame-src' . $add('frame') . '; ' : '';
+    header("Content-Security-Policy: default-src 'self'; script-src 'self'{$ga}" . $add('script') . "; style-src 'self' https://fonts.googleapis.com" . $add('style') . "{$styleInline}; "
+        . "font-src https://fonts.gstatic.com; img-src 'self' data:{$gaConnect}" . $add('img') . "; connect-src 'self'{$gaConnect}" . $add('connect') . "; {$frame}object-src 'none'; base-uri 'self'; "
+        . "form-action 'self'" . $add('form') . "; frame-ancestors " . ($admin ? "'none'" : "'self'"));
     // HSTS は mpr-shop.com 全体に効いてしまうため、ここでは送らない（常時SSLは .htaccess で対応）
     if ($admin) {
         header('Cache-Control: no-store');
