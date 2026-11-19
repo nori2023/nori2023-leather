@@ -64,6 +64,7 @@ function route_admin(string $path): void
         $path === '/admin/payment' => $post ? admin_payment_save() : admin_payment(),
         $path === '/admin/payment/tester' && $post => admin_payment_tester(),
         $path === '/admin/settings/analytics' && $post => admin_analytics_save(),
+        $path === '/admin/settings/counter' && $post => admin_counter_save(),
         $path === '/admin/settings/hero-image' && $post => admin_hero_upload(),
         $path === '/admin/settings/hero-image/reset' && $post => admin_hero_reset(),
         $path === '/admin/workshops' => $post ? admin_workshop_save(null) : admin_workshops(),
@@ -739,7 +740,8 @@ function admin_settings(): void
         . '<h2 class="font-serif text-lg text-leather">アクセス解析（Googleアナリティクス）</h2>'
         . '<p class="text-sm leading-6 text-muted">Googleアナリティクスの「測定ID」（G- で始まる英数字）を入れると、サイトの見られ方を集計できます。空欄にして保存すると止まります。管理画面は集計しません。</p>'
         . admin_field('測定ID', '<input id="ga_id" name="ga_id" maxlength="20" placeholder="G-XXXXXXXXXX" value="' . e(ga_measurement_id()) . '" autocapitalize="characters" class="' . A_INPUT . ' font-mono">', 'ga_id')
-        . '<button class="' . A_BTN_PRIMARY . '">保存する</button></form></div>';
+        . '<button class="' . A_BTN_PRIMARY . '">保存する</button></form>'
+        . admin_counter_card() . '</div>';
     render_admin('ページ設定', $h);
 }
 
@@ -751,6 +753,40 @@ function admin_settings_save(): void
     $body = post_str('about_body', 5000);
     set_setting('page.about', ['body' => $body !== '' ? $body : null], $actor);
     audit('settings.update', 'home.hero,page.about');
+    redirect('/admin/settings?notice=saved');
+}
+
+function admin_counter_card(): string
+{
+    $cfg = counter_cfg();
+    $n = counter_total();
+    $excluded = !empty($_COOKIE[NOCOUNT_COOKIE]);
+    return '<form method="post" action="' . e(url('/admin/settings/counter')) . '" class="' . A_CARD . ' space-y-4">' . csrf_field()
+        . '<h2 class="font-serif text-lg text-leather">訪問者カウンター（トップページの一番下）</h2>'
+        . '<p class="text-sm leading-6 text-muted">同じ端末は24時間に1回だけ数えます。ロボット（検索サイトの巡回など）は数えません。</p>'
+        . '<p class="text-sm">いまの数：<span class="font-mono text-lg text-leather">' . ($n === null ? '（準備中）' : e(number_format($n))) . '</span> 人</p>'
+        . '<label class="flex items-center gap-2 text-sm"><input type="checkbox" name="enabled" value="1"' . ($cfg['enabled'] ? ' checked' : '') . ' class="h-5 w-5"> トップページに表示する</label>'
+        . admin_field('数を変更する（空欄なら変えません）', '<input id="counter_set" name="counter_set" inputmode="numeric" pattern="[0-9]*" maxlength="9" autocomplete="off" class="' . A_INPUT . ' font-mono">', 'counter_set', '始める数を決めたいときや、テストで増えた分を戻すときに使います')
+        . '<label class="flex items-center gap-2 text-sm"><input type="checkbox" name="nocount" value="1"' . ($excluded ? ' checked' : '') . ' class="h-5 w-5"> この端末（いま使っているパソコン・スマホ）は数えない</label>'
+        . '<p class="text-xs leading-5 text-muted">おっさん本人が何度も見ても増えないようにする設定です。端末ごとに、それぞれの端末でチェックしてください。</p>'
+        . '<button class="' . A_BTN_PRIMARY . '">保存する</button></form>';
+}
+
+function admin_counter_save(): void
+{
+    $actor = current_admin()['email'];
+    set_setting('counter', ['enabled' => !empty($_POST['enabled'])], $actor);
+    $set = preg_replace('/[^0-9]/', '', post_str('counter_set', 12));
+    if ($set !== '' && strlen($set) <= 9) {
+        db()->prepare('UPDATE visitor_counter SET total = ?, updated_at = NOW() WHERE id = 1')->execute([(int) $set]);
+        audit('counter.set', null, ['total' => (int) $set]);
+    }
+    $opts = ['path' => counter_cookie_path(), 'secure' => is_https(), 'httponly' => true, 'samesite' => 'Lax'];
+    if (!empty($_POST['nocount'])) {
+        setcookie(NOCOUNT_COOKIE, '1', ['expires' => time() + 60 * 60 * 24 * 365 * 5] + $opts);
+    } else {
+        setcookie(NOCOUNT_COOKIE, '', ['expires' => time() - 3600] + $opts);
+    }
     redirect('/admin/settings?notice=saved');
 }
 

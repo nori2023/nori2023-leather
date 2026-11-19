@@ -17,6 +17,9 @@ const COMING_SOON = [
 
 function route_public(string $path): void
 {
+    if ($path === '/visit' && ($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+        counter_visit();
+    }
     if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET' && ($_SERVER['REQUEST_METHOD'] ?? '') !== 'HEAD') {
         http_response_code(405);
         exit;
@@ -144,9 +147,11 @@ function page_home(): void
 </section>
 
 {$h(instagram_feed($igPosts))}
+
+{$h(counter_section())}
 HTML;
 
-    render_page(['path' => '/'], $body);
+    render_page(['path' => '/', 'headScripts' => [['src' => asset('assets/counter.js')]]], $body);
     ig_sync_if_due_after_response();
 }
 

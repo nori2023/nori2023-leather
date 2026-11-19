@@ -239,18 +239,6 @@ function json_input(): array
     return is_array($d) ? $d : $_POST;
 }
 
-/** 同じサイトから送られてきたか（Origin が分かるときだけ確かめる） */
-function same_origin(): bool
-{
-    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
-    if ($origin === '' || $origin === 'null') {
-        return true;
-    }
-    $self = parse_url(absolute_url('/'));
-    $o = parse_url($origin);
-    return ($o['host'] ?? '') === ($self['host'] ?? '') && ($o['scheme'] ?? '') === ($self['scheme'] ?? '');
-}
-
 // ------------------------------------------------------------------ EnrolReq（JSから）
 function checkout_enroll(string $token): void
 {

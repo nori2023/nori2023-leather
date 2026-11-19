@@ -24,6 +24,7 @@ require APP_DIR . '/lib/instagram.php';
 require_once APP_DIR . '/lib/security.php';
 require APP_DIR . '/lib/zeus.php';
 require APP_DIR . '/lib/orders.php';
+require APP_DIR . '/lib/counter.php';
 
 set_exception_handler(function (Throwable $e): void {
     error_log('[nori2023] ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
