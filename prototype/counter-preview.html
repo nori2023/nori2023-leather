@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>訪問者カウンター 試作（Nori2023）</title>
+<style>
+  :root {
+    --ivory: #f7f3eb; --paper: #efe8db; --leather: #493326; --camel: #b07a45; --muted: #7a6a5c; --line: #e2d8c8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: var(--ivory); color: var(--leather);
+    font-family: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+    display: flex; flex-direction: column; align-items: center; padding: 32px 16px 48px;
+  }
+  .note { max-width: 34rem; font-size: 13px; line-height: 1.8; color: var(--muted); background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 12px 16px; }
+  .note b { color: var(--leather); }
+
+  /* ===== 本体：カウンターの欄（サイトに入れる部分） ===== */
+  .nori-counter { margin-top: 36px; text-align: center; }
+  .nori-counter__lead { font-family: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif; font-size: 17px; letter-spacing: .04em; margin: 0 0 18px; }
+  .nori-counter__foot { margin: 18px 0 0; font-size: 15px; letter-spacing: .03em; }
+  .nori-counter__foot .num { font-family: "Courier New", ui-monospace, monospace; font-weight: 700; font-size: 17px; letter-spacing: .08em; color: var(--camel); }
+
+  /* 数取器（手動式人数カウンター） */
+  .tally { position: relative; width: 250px; height: 300px; margin: 0 auto; user-select: none; }
+  /* 上のボタン（押しボタン） */
+  .tally__button { position: absolute; left: 50%; top: 0; width: 56px; height: 46px; transform: translateX(-50%); }
+  .tally__button-cap {
+    position: absolute; left: 0; right: 0; top: 0; height: 22px; border-radius: 50% / 45%;
+    background: radial-gradient(ellipse at 40% 30%, #ffffff 0%, #d9d9d6 28%, #9a9a96 70%, #6e6e6a 100%);
+    box-shadow: 0 2px 0 #5d5d59, inset 0 -2px 3px rgba(0,0,0,.25);
+    z-index: 2; transition: transform .09s ease-in;
+  }
+  .tally__button-stem {
+    position: absolute; left: 14px; right: 14px; top: 10px; height: 38px;
+    background: linear-gradient(90deg, #6f6f6b, #e7e7e3 35%, #bdbdb8 55%, #6a6a66);
+    border-radius: 3px; transition: transform .09s ease-in;
+  }
+  .tally.is-pressed .tally__button-cap, .tally.is-pressed .tally__button-stem { transform: translateY(9px); }
+
+  /* 丸い金属のボディ */
+  .tally__body {
+    position: absolute; left: 0; top: 38px; width: 250px; height: 210px; border-radius: 50% / 47%;
+    background:
+      radial-gradient(ellipse at 30% 22%, rgba(255,255,255,.95) 0%, rgba(255,255,255,0) 38%),
+      radial-gradient(ellipse at 70% 85%, rgba(0,0,0,.28) 0%, rgba(0,0,0,0) 55%),
+      conic-gradient(from 210deg, #b9b9b4, #f2f2ee, #a9a9a4, #d8d8d3, #8f8f8a, #e4e4df, #b9b9b4);
+    box-shadow: 0 10px 18px rgba(55,38,25,.28), inset 0 0 0 3px #8d8d88, inset 0 0 0 6px #e9e9e5, inset 0 0 22px rgba(0,0,0,.25);
+  }
+  /* 使い込んだ感じ（細かい傷とくすみ） */
+  .tally__body::before {
+    content: ""; position: absolute; inset: 8px; border-radius: inherit; pointer-events: none; opacity: .5; mix-blend-mode: multiply;
+    background:
+      repeating-linear-gradient(115deg, rgba(0,0,0,.05) 0 1px, transparent 1px 7px),
+      repeating-linear-gradient(25deg, rgba(0,0,0,.035) 0 1px, transparent 1px 11px),
+      radial-gradient(circle at 78% 30%, rgba(120,90,40,.25), transparent 30%),
+      radial-gradient(circle at 25% 75%, rgba(120,90,40,.18), transparent 28%);
+  }
+  .tally__brand { position: absolute; left: 0; right: 0; bottom: 30px; font: 600 10px/1 "Courier New", monospace; letter-spacing: .32em; color: #5c5c58; text-shadow: 0 1px 0 rgba(255,255,255,.7); }
+  /* 横のリセットつまみ */
+  .tally__knob {
+    position: absolute; right: -9px; top: 112px; width: 20px; height: 28px; border-radius: 4px;
+    background: repeating-linear-gradient(0deg, #7a7a76 0 2px, #d6d6d1 2px 4px);
+    box-shadow: inset 0 0 0 1px #5f5f5b;
+  }
+  /* 下の指かけリング */
+  .tally__ring {
+    position: absolute; left: 50%; bottom: 0; width: 74px; height: 74px; transform: translateX(-50%);
+    border-radius: 50%; border: 10px solid transparent;
+    background: linear-gradient(var(--ivory), var(--ivory)) padding-box,
+                conic-gradient(#8e8e89, #f1f1ed, #9c9c97, #dcdcd7, #7f7f7a, #e9e9e4, #8e8e89) border-box;
+    box-shadow: 0 4px 6px rgba(55,38,25,.22);
+    z-index: -1;
+  }
+
+  /* 黒い数字窓 */
+  .tally__window {
+    position: absolute; left: 50%; top: 66px; transform: translateX(-50%);
+    display: flex; gap: 2px; padding: 6px 7px; border-radius: 6px;
+    background: #121110;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,.9), 0 0 0 2px #6d6d69, 0 0 0 4px #e3e3de, 0 1px 0 4px #8b8b86;
+  }
+  .wheel {
+    position: relative; width: 26px; height: 40px; overflow: hidden; border-radius: 2px;
+    background: #1c1b19;
+  }
+  /* 円筒の丸みに見せる影 */
+  .wheel::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(180deg, rgba(0,0,0,.85) 0%, rgba(0,0,0,0) 30%, rgba(255,255,255,.06) 50%, rgba(0,0,0,0) 70%, rgba(0,0,0,.85) 100%);
+  }
+  .wheel__strip { position: absolute; left: 0; right: 0; top: 0; will-change: transform; }
+  .wheel__strip span {
+    display: block; height: 40px; line-height: 40px; text-align: center;
+    font: 700 26px/40px "Courier New", ui-monospace, monospace; color: #f1ede4;
+    text-shadow: 0 0 1px rgba(255,255,255,.4);
+  }
+  .wheel.is-rolling .wheel__strip { transition: transform var(--roll, .42s) cubic-bezier(.25, 1.45, .45, 1); }
+
+  /* ガチャッ：ボディが少し揺れる */
+  @keyframes clack { 0% { transform: translateY(0) } 35% { transform: translateY(2px) rotate(-.6deg) } 70% { transform: translateY(-1px) rotate(.3deg) } 100% { transform: none } }
+  .tally.is-clack .tally__body, .tally.is-clack .tally__window-wrap { animation: clack .32s ease-out; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wheel.is-rolling .wheel__strip { transition: none; }
+    .tally.is-clack .tally__body { animation: none; }
+    .tally__button-cap, .tally__button-stem { transition: none; }
+  }
+  .sp { display: none; }
+  @media (max-width: 640px) { .sp { display: inline; } }
+  @media (max-width: 380px) {
+    .tally { transform: scale(.9); transform-origin: top center; margin-bottom: -30px; }
+    .nori-counter__foot { font-size: 14px; }
+  }
+
+  /* 試作用の操作ボタン（本番には入りません） */
+  .demo { margin-top: 30px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+  .demo button { min-height: 44px; padding: 0 16px; border-radius: 6px; border: 1px solid var(--leather); background: #fff; color: var(--leather); font-size: 14px; cursor: pointer; }
+  .demo button.primary { background: var(--leather); color: var(--ivory); }
+</style>
+</head>
+<body>
+  <p class="note"><b>試作品（見た目と動きの確認用）</b><br>下のボタンで、訪問者が来たときの「ガチャッ」を試せます。本番では、ページを開いたときに1回だけ動きます（24時間以内の再訪問では動かず、今の数字のまま表示）。数字は例です。</p>
+
+  <section class="nori-counter" aria-label="訪問者カウンター">
+    <p class="nori-counter__lead">懐かしいじゃろ？<br class="sp"> おっさん、こんなん付けてみました（笑）</p>
+    <div class="tally" id="tally" aria-hidden="true">
+      <div class="tally__ring"></div>
+      <div class="tally__button"><div class="tally__button-stem"></div><div class="tally__button-cap"></div></div>
+      <div class="tally__body"><div class="tally__brand">NORI2023</div></div>
+      <div class="tally__knob"></div>
+      <div class="tally__window" id="window"></div>
+    </div>
+    <p class="nori-counter__foot">あなたは <span class="num" id="footNum">001234</span> 人目の訪問者さんです。<br class="sp">ようこそ！</p>
+  </section>
+
+  <div class="demo">
+    <button class="primary" id="plus">訪問者が来た（＋1）</button>
+    <button id="carry">桁上がりを見る（009999→）</button>
+    <button id="million">100万人の手前にする</button>
+  </div>
+
+<script>
+(function () {
+  var DIGITS = 6;
+  var win = document.getElementById("window");
+  var tally = document.getElementById("tally");
+  var foot = document.getElementById("footNum");
+  var calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var wheels = [];
+  var value = 1233;
+
+  function build(n) {
+    win.innerHTML = "";
+    wheels = [];
+    for (var i = 0; i < n; i++) {
+      var w = document.createElement("div");
+      w.className = "wheel";
+      var s = document.createElement("div");
+      s.className = "wheel__strip";
+      // 0〜9 の後ろにもう一つ 0（9→0 を下から回して見せるため）
+      for (var d = 0; d <= 10; d++) { var sp = document.createElement("span"); sp.textContent = d % 10; s.appendChild(sp); }
+      w.appendChild(s);
+      win.appendChild(w);
+      wheels.push({ el: w, strip: s, digit: 0 });
+    }
+  }
+  function pad(v, n) { var t = String(v); while (t.length < n) t = "0" + t; return t; }
+  function place(wheel, idx, animate, delay) {
+    wheel.el.classList.toggle("is-rolling", !!animate);
+    wheel.strip.style.setProperty("--roll", "0.42s");
+    wheel.strip.style.transitionDelay = animate ? (delay || 0) + "ms" : "0ms";
+    wheel.strip.style.transform = "translateY(" + (-40 * idx) + "px)";
+  }
+  function show(v, animate) {
+    var text = pad(v, DIGITS);
+    if (text.length !== wheels.length) build(text.length);   // 100万人を超えたら桁を増やす
+    foot.textContent = text;
+    var changed = 0;
+    for (var i = wheels.length - 1; i >= 0; i--) {
+      var w = wheels[i], nd = +text[i];
+      if (nd === w.digit) continue;
+      var delay = changed * 60;                               // 右の桁から順に、少しずつ遅れて回る（桁上がり）
+      if (animate && !calm && nd === 0 && w.digit === 9) {
+        place(w, 10, true, delay);                            // 9 → 下の 0 へ回してから
+        (function (ww, dl) { setTimeout(function () { place(ww, 0, false); }, 480 + dl); })(w, delay);
+      } else {
+        place(w, nd, animate && !calm, delay);
+      }
+      w.digit = nd;
+      changed++;
+    }
+  }
+  function clack() {
+    if (calm) return;
+    tally.classList.add("is-pressed");
+    setTimeout(function () { tally.classList.remove("is-pressed"); tally.classList.add("is-clack"); }, 90);
+    setTimeout(function () { tally.classList.remove("is-clack"); }, 420);
+  }
+  function visit() { clack(); setTimeout(function () { value++; show(value, true); }, calm ? 0 : 80); }
+
+  build(DIGITS);
+  show(value, false);
+  setTimeout(visit, 700);   // ページを開いたときの「ガチャッ」
+
+  document.getElementById("plus").onclick = visit;
+  document.getElementById("carry").onclick = function () { value = 9999; show(value, false); setTimeout(visit, 300); };
+  document.getElementById("million").onclick = function () { value = 999999; show(value, false); setTimeout(visit, 300); };
+})();
+</script>
+</body>
+</html>

@@ -112,8 +112,8 @@ function page_home(): void
 
 <section class="bg-ink text-ivory">
   <div class="mx-auto grid max-w-6xl items-center gap-10 px-5 py-20 md:grid-cols-2 md:py-24">
-    <div class="relative mx-auto aspect-[1055/1491] w-full max-w-sm overflow-hidden rounded-card md:order-2 md:max-w-md">
-      <img src="{$h(e(url('/images/brand/cardcase-gift.jpg')))}" alt="名前やロゴを刻印した、ヌメ革の封筒型名刺・カードケース" loading="lazy" data-zoom class="absolute inset-0 h-full w-full object-cover">
+    <div class="relative mx-auto aspect-square w-full max-w-md overflow-hidden rounded-card md:order-2 md:max-w-lg">
+      <img src="{$h(e(url('/images/brand/cardcase-gift2.jpg')))}" alt="名入れ・ロゴ刻印ができる、封筒型の名刺・カードケース" loading="lazy" data-zoom class="absolute inset-0 h-full w-full object-cover">
     </div>
     <div>
       <p class="eyebrow !text-gold">Custom card case</p>
