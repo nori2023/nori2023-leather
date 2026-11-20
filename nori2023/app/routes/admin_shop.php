@@ -84,6 +84,11 @@ function admin_order_detail(string $id, ?string $error = null): void
             . '<label class="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" name="notify" value="1" checked> お客さんに発送のお知らせメールを送る</label>'
             . '<button class="' . A_BTN_PRIMARY . '">発送済みにする</button></form>';
     }
+    if ($o['status'] === 'awaiting_payment') {
+        $h .= '<form method="post" action="' . e(url('/admin/orders/' . $id . '/cancel')) . '" class="mt-6 space-y-2 border-t border-line pt-4" data-confirm="この決済待ちの注文を取り消して、作品を販売中に戻します。よろしいですか？">' . csrf_field()
+            . '<p class="text-xs leading-5 text-muted">お客さんが支払いの途中でやめた注文です。そのままでも ' . RESERVE_MINUTES . '分たつと自動で取り消されます。<br>念のため、決済設定の「ゼウスとの通信の記録」にこの注文の「pay … success」が無いことを確かめてから取り消してください。</p>'
+            . '<button class="' . A_BTN_DANGER . '">取り消して作品を販売中に戻す</button></form>';
+    }
     if (in_array($o['status'], ['paid', 'shipped'], true)) {
         $h .= '<form method="post" action="' . e(url('/admin/orders/' . $id . '/cancel')) . '" class="mt-6 space-y-2 border-t border-line pt-4" data-confirm="この注文をキャンセル扱いにします。返金（カードの取消）はゼウスの売上管理画面で行ってください。よろしいですか？">' . csrf_field()
             . '<p class="text-xs leading-5 text-muted">キャンセルにしても、<strong>カードの取消（返金）は自動では行われません</strong>。ゼウスの売上管理画面で取消してください。</p>'
@@ -120,6 +125,11 @@ function admin_order_ship(string $id): void
 function admin_order_cancel(string $id): void
 {
     $o = db_one('SELECT * FROM orders WHERE id = ?', [$id]);
+    if ($o && $o['status'] === 'awaiting_payment') {
+        cancel_unpaid_order($o, '管理画面で取り消し（決済待ち・' . current_admin()['email'] . '）');
+        audit('order.cancel_unpaid', $id, ['number' => $o['order_number']]);
+        redirect('/admin/orders/' . $id . '?notice=saved');
+    }
     if ($o && in_array($o['status'], ['paid', 'shipped'], true)) {
         db_exec("UPDATE orders SET status = 'cancelled', cancelled_at = NOW(), admin_note = CONCAT(COALESCE(admin_note, ''), ?), updated_at = NOW() WHERE id = ?",
             ['管理画面でキャンセル（' . current_admin()['email'] . "）\n", $id]);
