@@ -52,6 +52,15 @@ function new_order_number(): string
     return 'N' . date('ymdHis');
 }
 
+/** ネットで買えるだけの情報（送料）がそろっているか */
+function product_shippable(array $p): bool
+{
+    return ($p['shipping_name'] ?? null) !== null && ($p['shipping_fee'] ?? null) !== null;
+}
+
+/** カード決済の完了後の発送の目安（お客さん向け） */
+const SHIP_AFTER_PAID = 'お支払いを確認しましたので、3営業日以内に発送いたします。';
+
 /**
  * 作品を仮押さえして注文を作る。売れてしまっていたら null。
  * $in：お客さんの入力（検証済み）
@@ -64,7 +73,7 @@ function create_product_order(array $product, array $in): ?array
         // 同時に2人が押しても1人だけ通るように、行をロックしてから確かめる
         $p = db_one('SELECT p.*, s.name AS shipping_name, s.fee AS shipping_fee FROM products p
                      LEFT JOIN shipping_profiles s ON s.id = p.shipping_profile_id WHERE p.id = ? FOR UPDATE', [$product['id']]);
-        if (!$p || $p['status'] !== 'on_sale') {
+        if (!$p || $p['status'] !== 'on_sale' || !product_shippable($p)) {
             $pdo->rollBack();
             return null;
         }
@@ -176,7 +185,7 @@ function send_order_mails(array $o): void
     $body = "{$o['customer_name']} 様\n\nこのたびは「" . SITE_NAME . "」の作品をお買い上げいただき、ありがとうございます。\n"
         . "クレジットカードでのお支払いが完了しました。ご注文の内容は次のとおりです。\n\n"
         . order_summary_text($o)
-        . "\n" . (SELLER_INFO['delivery'] ?? '') . "\n発送しましたら、お問い合わせ番号をメールでお知らせします。\n"
+        . "\n" . SHIP_AFTER_PAID . "\n発送しましたら、お問い合わせ番号をメールでお知らせします。\n"
         . "\nご不明な点は、このメールに返信するか、下記までお問い合わせください。\n" . $sig;
     send_mail($o['email'], '【' . SITE_NAME . '】ご注文ありがとうございます（' . $o['order_number'] . '）', $body);
     send_mail($si['email'], '【注文】' . $o['order_number'] . ' ' . $o['customer_name'] . ' 様',

@@ -322,7 +322,7 @@ function purchase_area(array $p): string
             . '<p class="mt-1 text-muted">手続きが終わらんかったら、また販売中に戻りますけぇね。</p></div>';
     }
     // 決済設定が「公開」、またはテスト担当の端末のときだけ購入できる
-    $enabled = checkout_open();
+    $enabled = checkout_open() && product_shippable($p);
     if ($enabled) {
         $h = '<div class="mt-8"><a href="' . e(url('/checkout/' . $p['slug'])) . '" class="flex min-h-14 w-full items-center justify-center rounded-[2px] bg-leather text-[1rem] tracking-[0.15em] text-ivory hover:bg-charcoal">購入手続きへ進む</a>'
             . '<p class="mt-3 text-center text-xs text-muted">お支払いはクレジットカード（一括）です。</p>';

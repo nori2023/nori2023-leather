@@ -45,7 +45,7 @@ function checkout_meta(string $title, string $path, array $extra = []): array
 function checkout_product(string $slug): ?array
 {
     $p = get_public_product($slug);
-    return $p && $p['status'] === 'on_sale' ? $p : null;
+    return $p && $p['status'] === 'on_sale' && product_shippable($p) ? $p : null;
 }
 
 function steps_bar(int $now): string
@@ -335,7 +335,7 @@ function checkout_done(string $token): void
         . '<p>作品：' . e($snap['product']['name'] ?? '') . '（品番 ' . e($snap['product']['code'] ?? '') . '）</p>'
         . '<p>お支払い合計：' . e(format_price((int) $o['total'])) . '（税込）</p></div>'
         . '<p class="mt-6 text-sm leading-7 text-muted">ご注文の確認メールを <strong>' . e($o['email']) . '</strong> にお送りしました。<br>'
-        . e((string) SELLER_INFO['delivery']) . '<br>メールが届かないときは、迷惑メールのフォルダもご確認ください。</p>'
+        . e(SHIP_AFTER_PAID) . '<br>メールが届かないときは、迷惑メールのフォルダもご確認ください。</p>'
         . '<p class="mt-10">' . button_link('/', 'トップへ戻る', 'outline') . '</p></div>';
     render_page(checkout_meta('ご注文完了', '/checkout'), $body);
 }

@@ -248,6 +248,7 @@ function admin_dashboard(): void
     }
     $h .= '</ul><div class="mt-6 flex flex-wrap gap-3"><a href="' . e(url('/admin/products/new')) . '" class="' . A_BTN_PRIMARY . '">＋ 完成品を登録する</a>'
         . '<a href="' . e(url('/admin/settings')) . '" class="' . A_BTN_GHOST . '">ページ設定</a></div>'
+        . admin_unshippable_notice()
         . (zeus_cfg()['mode'] !== 'live' ? '<p class="mt-8 rounded border border-amber-300 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">いまはネット購入を受け付けていません（決済設定：' . e(['off' => '停止', 'tester' => 'テスト担当の端末だけ'][zeus_cfg()['mode']] ?? '') . '）。<a href="' . e(url('/admin/payment')) . '" class="underline">決済設定</a></p>' : '');
     render_admin('ダッシュボード', $h);
 }
@@ -998,4 +999,20 @@ function admin_account_save(): void
     session_regenerate_id(true);
     audit('account.password_change');
     redirect('/admin/account?notice=password');
+}
+
+/** 販売中なのに送料が決まっていない作品（ネットで買えない）を知らせる */
+function admin_unshippable_notice(): string
+{
+    $rows = db_all("SELECT p.id, p.code, p.name FROM products p LEFT JOIN shipping_profiles s ON s.id = p.shipping_profile_id
+                    WHERE p.status = 'on_sale' AND (s.id IS NULL OR s.fee IS NULL) ORDER BY p.code");
+    if (!$rows) {
+        return '';
+    }
+    $li = '';
+    foreach ($rows as $r) {
+        $li .= '<li><a href="' . e(url('/admin/products/' . $r['id'])) . '" class="underline">' . e(($r['code'] ? $r['code'] . '　' : '') . $r['name']) . '</a></li>';
+    }
+    return '<div class="mt-8 rounded border border-red-300 bg-red-50 px-4 py-3 text-sm leading-6 text-red-900"><p class="font-medium">送料が決まっていないため、ネットで買えない作品があります（' . count($rows) . '点）</p>'
+        . '<p>作品の編集画面で「送料（発送方法）」を選んでください。</p><ul class="mt-1 list-disc pl-5">' . $li . '</ul></div>';
 }

@@ -28,10 +28,10 @@ function send_mail(string $to, string $subject, string $body): bool
     if ($log !== '') { // 開発用：送らずにファイルへ書く
         return (bool) file_put_contents($log, "To: {$to}\nSubject: {$subject}\n\n{$body}\n----\n", FILE_APPEND);
     }
-    mb_language('Japanese');
+    mb_language('uni'); // UTF-8 で送る（機種依存文字も化けない）
     mb_internal_encoding('UTF-8');
     $from = mail_from();
-    $headers = 'From: ' . mb_encode_mimeheader(SITE_NAME) . " <{$from}>";
+    $headers = 'From: ' . mb_encode_mimeheader(SITE_NAME, 'UTF-8') . " <{$from}>\r\nContent-Language: ja";
     return @mb_send_mail($to, $subject, $body, $headers, '-f' . $from);
 }
 
