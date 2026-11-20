@@ -170,7 +170,8 @@ function admin_payment(?string $error = null): void
         foreach ($events as $ev) {
             $p = json_decode((string) $ev['payload'], true) ?: [];
             $h .= '<li class="py-2"><span class="text-muted">' . e(format_datetime($ev['received_at'])) . '</span>　<strong>' . e((string) ($p['label'] ?? '')) . '</strong>　'
-                . e('status=' . ($p['status'] ?? '') . ' code=' . ($p['code'] ?? '') . ' http=' . ($p['http'] ?? '')) . (!empty($p['error']) ? ' <span class="text-red-700">' . e((string) $p['error']) . '</span>' : '') . '</li>';
+                . e('status=' . ($p['status'] ?? '') . ' code=' . ($p['code'] ?? '') . ' http=' . ($p['http'] ?? '')) . (!empty($p['error']) ? ' <span class="text-red-700">' . e((string) $p['error']) . '</span>' : '')
+                . (!empty($p['body']) ? '<details class="mt-1"><summary class="cursor-pointer text-muted">ゼウスの返事を見る</summary><pre class="mt-1 whitespace-pre-wrap break-all rounded bg-paper p-2">' . e(mb_substr((string) $p['body'], 0, 1500)) . '</pre></details>' : '') . '</li>';
         }
         $h .= '</ul>';
     }

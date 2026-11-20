@@ -256,6 +256,7 @@ function checkout_enroll(string $token): void
         $r = zeus_enroll($o, $tokenKey, (string) ($d['card_name'] ?? ''));
     } catch (Throwable $e) {
         error_log('[nori2023 enroll] ' . $e->getMessage());
+        zeus_log('enroll-error', $o['id'], ['status' => 'exception', 'error' => mb_substr($e->getMessage(), 0, 300)], null);
         json_response(['ok' => false, 'message' => zeus_error_message('')], 502);
     }
     if ($r['xid'] !== '') {

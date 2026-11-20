@@ -143,10 +143,16 @@ function zeus_post(string $xml, string $label, ?string $orderId = null): array
 function zeus_log(string $label, ?string $orderId, array $res, mixed $body): void
 {
     try {
-        $payload = ['label' => $label, 'order' => $orderId, 'http' => $res['http'], 'status' => $res['status'], 'code' => $res['code'], 'error' => $res['error'],
-            'body' => is_string($body) ? mb_substr(preg_replace('#<(key|token_key)>[^<]*</#', '<$1>***</', $body), 0, 3000) : null];
+        if (is_string($body) && !mb_check_encoding($body, 'UTF-8')) {
+            // ゼウスの返事が Shift_JIS のときも記録できるようにする
+            $body = mb_convert_encoding($body, 'UTF-8', 'SJIS-win');
+        }
+        $clean = is_string($body) ? preg_replace('#<(key|token_key)>[^<]*</#', '<$1>***</', $body) : null;
+        $payload = ['label' => $label, 'order' => $orderId, 'http' => $res['http'] ?? 0, 'status' => $res['status'] ?? '', 'code' => $res['code'] ?? '', 'error' => $res['error'] ?? '',
+            'body' => is_string($clean) ? mb_substr($clean, 0, 3000) : null];
+        $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_PARTIAL_OUTPUT_ON_ERROR);
         db_exec('INSERT INTO payment_events (id, provider, event_key, payload, processed) VALUES (?, ?, ?, ?, 1)',
-            [uuid(), 'zeus', $label . ':' . uuid(), json_encode($payload, JSON_UNESCAPED_UNICODE)]);
+            [uuid(), 'zeus', $label . ':' . uuid(), $json ?: '{"label":"log-error"}']);
     } catch (Throwable $e) {
         error_log('[nori2023 zeus log] ' . $e->getMessage());
     }
