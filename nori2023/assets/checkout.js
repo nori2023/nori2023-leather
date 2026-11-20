@@ -38,14 +38,19 @@
   }
 
   // ---- ゼウスのスクリプトが呼ぶ関数（名前は仕様で決まっている）
-  window._onPaResSuccess = function (data) { done(parse(data)); };
-  window._onError = function (error) {
-    var m = error && error.message ? String(error.message) : "";
-    done({ ok: false, message: "カード会社の本人認証ができませんでした。もう一度お試しください。" + (m ? "（" + m + "）" : "") });
-  };
-  window.loadedChallenge = function () {
-    if (wait) wait.hidden = true;
-  };
+  // ゼウスのスクリプトは同じ名前の空の関数を持っていて、後から読み込まれると上書きされる。
+  // そのため、両方のスクリプトを読み終えた後（DOMContentLoaded）に入れ直す。
+  function installCallbacks() {
+    window._onPaResSuccess = function (data) { done(parse(data)); };
+    window._onError = function (error) {
+      var m = error && error.message ? String(error.message) : "";
+      done({ ok: false, message: "カード会社の本人認証ができませんでした。もう一度お試しください。" + (m ? "（" + m + "）" : "") });
+    };
+    window.loadedChallenge = function () {
+      if (wait) { wait.hidden = true; wait.style.display = "none"; }
+    };
+  }
+  installCallbacks();
 
   function enroll() {
     var tokenEl = form.querySelector("[name=zeus_token_value]");
@@ -104,6 +109,7 @@
   }
 
   document.addEventListener("DOMContentLoaded", function () {
+    installCallbacks();
     form = document.querySelector("form[data-checkout]");
     if (!form) return;
     btn = document.getElementById("btn_go_to_confirm_page");
@@ -113,5 +119,12 @@
     form.addEventListener("submit", function (e) { e.preventDefault(); pay(); });
     if (btn) btn.addEventListener("click", pay);
     countdown();
+    // 本人認証の画面（iframe）が出たら「準備しています」を消す
+    var box = document.getElementById("3dscontainer");
+    if (box && "MutationObserver" in window) {
+      new MutationObserver(function () {
+        if (document.getElementById("3ds_challenge") && wait) { wait.hidden = true; wait.style.display = "none"; }
+      }).observe(box, { childList: true });
+    }
   });
 })();

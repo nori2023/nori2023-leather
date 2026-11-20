@@ -223,7 +223,7 @@ function checkout_pay(string $token): void
     $origin = $ep['origin'];
     render_page(checkout_meta('お支払い', '/checkout', [
         // 決済ページだけ、ゼウスの読み込み・通信と、カード会社の本人認証画面（iframe）を許可する
-        'csp' => ['script' => [$origin], 'style' => [$origin], 'connect' => [$origin], 'img' => [$origin], 'frame' => ['https:'], 'form' => ['https:'], 'style_inline' => true],
+        'csp' => ['script' => [$origin], 'style' => [$origin], 'connect' => [$origin, 'https:'], 'img' => [$origin], 'frame' => ['https:'], 'form' => ['https:'], 'style_inline' => true],
         'headStyles' => [$ep['css']],
         'headScripts' => [
             ['src' => asset('assets/checkout.js'), 'data' => ['ipcode' => $c['clientip'], 'csrf' => csrf_token()]],
