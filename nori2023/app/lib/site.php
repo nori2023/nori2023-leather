@@ -26,6 +26,8 @@ const SITE_SUB = '使やぁ使うほど、ええ味が出てくる革小物じ�
 const SITE_DESCRIPTION = '「おっさんが、ひとつひとつ作っとります。」手仕事で仕立てた1点ものの革小物と、名前やロゴを刻むヌメ革のオリジナル名刺ケース。広島のNori2023（おっさんのレザークラフト）公式サイトじゃけぇ。';
 const INSTAGRAM_HANDLE = '@nori2023_';
 const INSTAGRAM_URL = 'https://www.instagram.com/nori2023_/';
+const LINE_ID = '@228tbemy';
+const LINE_URL = 'https://line.me/R/ti/p/@228tbemy';
 
 const MAIN_NAV = [
     ['/shop', '販売中の作品'],

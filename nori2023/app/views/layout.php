@@ -106,6 +106,7 @@ function site_footer(): string
         . '<p class="mt-1 text-xs tracking-[0.35em] text-gold">' . e(strtoupper(SITE_BRAND)) . '</p>'
         . '<p class="mt-4 text-sm leading-7 text-ivory/70">' . e(SITE_CATCH) . '</p>'
         . '<a href="' . e(INSTAGRAM_URL) . '" target="_blank" rel="noopener noreferrer" class="mt-5 inline-flex min-h-11 items-center gap-2 text-sm text-gold hover:text-ivory">' . instagram_icon() . ' ' . e(INSTAGRAM_HANDLE) . '</a>'
+        . '<br><a href="' . e(LINE_URL) . '" target="_blank" rel="noopener noreferrer" class="inline-flex min-h-11 items-center gap-2 text-sm text-gold hover:text-ivory">' . chat_icon() . ' 公式LINE ' . e(LINE_ID) . '</a>'
         . '</div><div class="grid grid-cols-1 gap-8 text-sm sm:grid-cols-2">';
     foreach ([MAIN_NAV, FOOTER_NAV] as $nav) {
         $h .= '<ul class="space-y-1">';

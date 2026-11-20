@@ -234,3 +234,56 @@ function admin_payment_tester(): void
     }
     redirect('/admin/payment?notice=saved');
 }
+
+// ================================================================== お問い合わせ
+function admin_inquiries(): void
+{
+    $all = query_str('show', 10) === 'all';
+    $rows = db_all('SELECT * FROM contact_messages ' . ($all ? '' : 'WHERE handled = 0 ') . 'ORDER BY created_at DESC LIMIT 200');
+    $tab = static fn (string $label, string $q, bool $on) => '<a href="' . e(url('/admin/inquiries' . $q)) . '" class="inline-flex min-h-10 items-center rounded-full border px-4 text-sm '
+        . ($on ? 'border-leather bg-leather text-ivory' : 'border-line bg-white') . '">' . e($label) . '</a>';
+    $h = '<div class="mb-4 flex flex-wrap gap-2">' . $tab('未対応', '', !$all) . $tab('対応済みも含めて全部', '?show=all', $all) . '</div>';
+    if (!$rows) {
+        $h .= '<p class="' . A_CARD . ' text-sm text-muted">' . ($all ? 'お問い合わせはまだありません。' : '未対応のお問い合わせはありません。') . '</p>';
+    } else {
+        $h .= '<ul class="space-y-2">';
+        foreach ($rows as $r) {
+            $h .= '<li><a href="' . e(url('/admin/inquiries/' . $r['id'])) . '" class="' . A_CARD . ' block hover:border-camel">'
+                . '<p class="flex flex-wrap items-center gap-2 text-sm"><span class="rounded px-2 py-0.5 text-xs ' . ($r['handled'] ? 'bg-gray-100 text-gray-600' : 'bg-amber-100 text-amber-900') . '">' . ($r['handled'] ? '対応済み' : '未対応') . '</span>'
+                . '<span class="text-muted">' . e(date('Y.m.d H:i', strtotime($r['created_at']))) . '</span><span class="font-medium">' . e($r['name']) . ' 様</span></p>'
+                . '<p class="mt-1 text-sm">' . e((string) $r['subject']) . '</p>'
+                . '<p class="mt-1 line-clamp-2 text-xs text-muted">' . e(mb_substr($r['body'], 0, 120)) . '</p></a></li>';
+        }
+        $h .= '</ul>';
+    }
+    render_admin('お問い合わせ', $h);
+}
+
+function admin_inquiry_detail(string $id): void
+{
+    $r = db_one('SELECT * FROM contact_messages WHERE id = ?', [$id]);
+    if (!$r) {
+        redirect('/admin/inquiries');
+    }
+    $reply = 'mailto:' . rawurlencode($r['email']) . '?subject=' . rawurlencode('Re: お問い合わせの件（' . SITE_NAME . '）');
+    $h = '<p class="mb-4"><a href="' . e(url('/admin/inquiries')) . '" class="text-sm text-muted underline">← 一覧へ戻る</a></p>'
+        . '<div class="' . A_CARD . ' space-y-3 text-sm leading-7">'
+        . '<p><span class="text-muted">受付：</span>' . e(date('Y年n月j日 H:i', strtotime($r['created_at']))) . '</p>'
+        . '<p><span class="text-muted">種類：</span>' . e((string) $r['subject']) . '</p>'
+        . '<p><span class="text-muted">お名前：</span>' . e($r['name']) . ' 様</p>'
+        . '<p><span class="text-muted">メール：</span><a href="' . e($reply) . '" class="text-leather underline">' . e($r['email']) . '</a></p>'
+        . ($r['phone'] ? '<p><span class="text-muted">電話：</span><a href="tel:' . e($r['phone']) . '" class="text-leather underline">' . e($r['phone']) . '</a></p>' : '')
+        . '<div class="border-t border-line pt-3"><p class="text-muted">内容</p><p class="mt-1 whitespace-pre-wrap break-words">' . e($r['body']) . '</p></div></div>'
+        . '<div class="mt-4 flex flex-wrap gap-3"><a href="' . e($reply) . '" class="' . A_BTN_PRIMARY . '">メールで返事を書く</a>'
+        . '<form method="post" action="' . e(url('/admin/inquiries/' . $id)) . '">' . csrf_field()
+        . '<button class="' . A_BTN_GHOST . '">' . ($r['handled'] ? '未対応に戻す' : '対応済みにする') . '</button></form></div>'
+        . '<p class="mt-3 text-xs leading-5 text-muted">お知らせメール（kiyokawa@ 宛て）に「返信」しても、お客さんに届きます。</p>';
+    render_admin('お問い合わせ', $h);
+}
+
+function admin_inquiry_toggle(string $id): void
+{
+    db_exec('UPDATE contact_messages SET handled = 1 - handled WHERE id = ?', [$id]);
+    audit('contact.toggle', $id);
+    redirect('/admin/inquiries/' . $id . '?notice=saved');
+}

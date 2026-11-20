@@ -21,4 +21,9 @@ if ($path === '/checkout' || str_starts_with($path, '/checkout/')) {
     route_checkout($path);
     exit;
 }
+if ($path === '/contact' || str_starts_with($path, '/contact/')) {
+    require APP_DIR . '/routes/contact.php';
+    route_contact($path);
+    exit;
+}
 route_public($path);

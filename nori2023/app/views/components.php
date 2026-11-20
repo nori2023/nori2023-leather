@@ -1,6 +1,13 @@
 <?php
 declare(strict_types=1);
 
+/** 吹き出しのアイコン（LINE 用。ロゴそのものは使わない） */
+function chat_icon(string $cls = 'h-5 w-5'): string
+{
+    return '<svg viewBox="0 0 24 24" fill="none" class="' . e($cls) . '" aria-hidden="true">'
+        . '<path d="M12 4C7 4 3 7.1 3 11c0 2.3 1.4 4.3 3.6 5.6L6 20l3.6-2.2c.8.2 1.6.2 2.4.2 5 0 9-3.1 9-7s-4-7-9-7Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+}
+
 function instagram_icon(string $cls = 'h-5 w-5'): string
 {
     return '<svg viewBox="0 0 24 24" fill="none" class="' . e($cls) . '" aria-hidden="true">'

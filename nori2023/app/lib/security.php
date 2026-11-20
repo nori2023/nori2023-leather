@@ -22,16 +22,19 @@ function mail_from(): string
     return $from;
 }
 
-function send_mail(string $to, string $subject, string $body): bool
+function send_mail(string $to, string $subject, string $body, ?string $replyTo = null): bool
 {
     $log = (string) (config()['mail_log'] ?? '');
     if ($log !== '') { // 開発用：送らずにファイルへ書く
-        return (bool) file_put_contents($log, "To: {$to}\nSubject: {$subject}\n\n{$body}\n----\n", FILE_APPEND);
+        return (bool) file_put_contents($log, "To: {$to}\n" . ($replyTo ? "Reply-To: {$replyTo}\n" : '') . "Subject: {$subject}\n\n{$body}\n----\n", FILE_APPEND);
     }
     mb_language('uni'); // UTF-8 で送る（機種依存文字も化けない）
     mb_internal_encoding('UTF-8');
     $from = mail_from();
     $headers = 'From: ' . mb_encode_mimeheader(SITE_NAME, 'UTF-8') . " <{$from}>\r\nContent-Language: ja";
+    if ($replyTo !== null && filter_var($replyTo, FILTER_VALIDATE_EMAIL) && !preg_match('/[\r\n]/', $replyTo)) {
+        $headers .= "\r\nReply-To: {$replyTo}";
+    }
     return @mb_send_mail($to, $subject, $body, $headers, '-f' . $from);
 }
 

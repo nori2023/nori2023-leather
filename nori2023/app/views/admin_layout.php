@@ -4,6 +4,7 @@ declare(strict_types=1);
 const ADMIN_NAV = [
     ['/admin', 'ダッシュボード'],
     ['/admin/orders', '注文'],
+    ['/admin/inquiries', 'お問い合わせ'],
     ['/admin/products', '完成品（1点もの）'],
     ['/admin/categories', 'カテゴリー'],
     ['/admin/shipping', '送料設定'],

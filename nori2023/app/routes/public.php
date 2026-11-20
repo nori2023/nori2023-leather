@@ -11,7 +11,6 @@ const COMING_SOON = [
     '/custom-cardcase' => ['オリジナル名刺入れ・カードケース', '名入れの相談は、お問い合わせからでも受けとりますけぇ。'],
     '/leather-care' => ['革のお手入れ', null],
     '/order' => ['オーダーメイド相談', null],
-    '/contact' => ['お問い合わせ', '急ぎの方は Instagram（@nori2023_）のDMから連絡してつかぁさい。'],
     '/legal/terms' => ['利用規約', null],
 ];
 
@@ -267,7 +266,7 @@ function page_product(string $slug): void
         . '<a href="' . e(url('/legal/shipping')) . '" class="text-leather underline underline-offset-4">配送・送料</a>'
         . '<a href="' . e(url('/legal/returns')) . '" class="text-leather underline underline-offset-4">返品・交換</a>'
         . '<a href="' . e(url('/legal/tokushoho')) . '" class="text-leather underline underline-offset-4">特定商取引法に基づく表記</a>'
-        . '<a href="' . e(url('/contact')) . '" class="text-leather underline underline-offset-4">この作品のこと、聞いてみる</a></div>';
+        . '<a href="' . e(url('/contact') . '?item=' . rawurlencode($p['slug'])) . '" class="text-leather underline underline-offset-4">この作品のこと、聞いてみる</a></div>';
 
     $body = breadcrumbs([
         $soldOut ? ['/gallery', 'SOLD OUT作品集'] : ['/shop', '販売中の作品'],
@@ -328,7 +327,7 @@ function purchase_area(array $p): string
             . '<p class="mt-3 text-center text-xs text-muted">お支払いはクレジットカード（一括）です。</p>';
     } else {
         $h = '<div class="mt-8"><button type="button" disabled class="flex min-h-14 w-full items-center justify-center rounded-[2px] bg-leather text-[1rem] tracking-[0.15em] text-ivory disabled:cursor-not-allowed disabled:opacity-50">ネットでの購入は、いま準備しよります</button>'
-            . '<p class="mt-3 text-center text-xs text-muted">欲しい方は <a href="' . e(url('/contact')) . '" class="text-leather underline underline-offset-4">お問い合わせ</a> から声かけてつかぁさい。</p>';
+            . '<p class="mt-3 text-center text-xs text-muted">欲しい方は <a href="' . e(url('/contact') . '?item=' . rawurlencode($p['slug'])) . '" class="text-leather underline underline-offset-4">お問い合わせ</a> から声かけてつかぁさい。</p>';
     }
     $h .= '<p class="mt-3 text-center text-xs text-muted">' . e(MAKER_SELLER_TEXT) . '</p>';
     return $h . '</div>';
