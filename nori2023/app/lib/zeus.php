@@ -116,8 +116,9 @@ function zeus_post(string $xml, string $label, ?string $orderId = null): array
         CURLOPT_CONNECTTIMEOUT => 10,
         CURLOPT_SSL_VERIFYPEER => true,
         CURLOPT_SSL_VERIFYHOST => 2,
-        CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
-        CURLOPT_SSLVERSION => CURL_SSLVERSION_TLSv1_2,
+        CURLOPT_PROTOCOLS => defined('CURLPROTO_HTTPS') ? constant('CURLPROTO_HTTPS') : 2,
+        // TLS 1.2 以上（サーバーによって定数名が無いことがあるので数値でも指定できるようにする）
+        CURLOPT_SSLVERSION => defined('CURL_SSLVERSION_TLSv1_2') ? constant('CURL_SSLVERSION_TLSv1_2') : 6,
     ]);
     $body = curl_exec($ch);
     $code = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);

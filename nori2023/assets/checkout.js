@@ -29,7 +29,12 @@
     var box = document.getElementById("3dscontainer");
     if (box) box.innerHTML = "";
     busy(false);
-    say((res && res.message) || "決済の処理ができませんでした。時間をおいてもう一度お試しください。");
+    say(((res && res.message) || "決済の処理ができませんでした。時間をおいてもう一度お試しください。") + "（カード情報は、下のボタンから入れ直してください）");
+    // ゼウスのスクリプトはトークン発行後にカード入力欄を消すので、入れ直すにはページを開き直す
+    if (btn && window.zeusToken) {
+      btn.textContent = "カード情報を入れ直す";
+      btn.onclick = function (e) { e.preventDefault(); e.stopImmediatePropagation(); location.reload(); };
+    }
   }
 
   // ---- ゼウスのスクリプトが呼ぶ関数（名前は仕様で決まっている）
