@@ -233,7 +233,7 @@ function cardcase_page(array $v, array $errors = []): void
         $steps .= '<li class="flex items-center gap-3 rounded-card border border-line bg-white px-4 py-3 text-sm"><span class="font-serif text-xl text-camel">' . ($i + 1) . '</span>' . e($t) . '</li>';
     }
 
-    $form = '<form method="post" action="' . e(url('/custom-cardcase')) . '#order-form" class="mt-8 space-y-6" novalidate>' . csrf_field()
+    $form = '<form method="post" action="' . e(url('/custom-cardcase')) . '#order-form" enctype="multipart/form-data" class="mt-8 space-y-6" novalidate>' . csrf_field()
         . '<div class="hidden" aria-hidden="true"><label>会社のホームページ<input name="website" tabindex="-1" autocomplete="off"></label></div>'
         . '<input type="hidden" name="t" value="' . time() . '">'
         . $block('1', 'ご注文内容',
@@ -250,7 +250,12 @@ function cardcase_page(array $v, array $errors = []): void
             . '<fieldset><legend class="text-sm font-medium">お受け取り方法 <span class="text-xs text-camel">必須</span></legend><div class="mt-2 flex flex-wrap gap-x-6">' . $choices('receive', CARDCASE_RECEIVE, (string) ($v['receive'] ?? '')) . '</div>' . $err('receive') . '</fieldset>'
             . $row('配送希望の場合の住所', '<textarea id="address" name="address" rows="2" maxlength="200" autocomplete="street-address" placeholder="〒731-0135 広島県広島市安佐南区…" class="' . $in . ' py-2 leading-7">' . $val('address') . '</textarea>', 'address', false, '「配送希望」の方は、郵便番号から書いてつかぁさい'))
         . $block('3', 'ロゴデータの送付・デザイン確認',
-            '<p class="text-[0.95rem] leading-8">企業ロゴ・画像データは、<strong class="font-medium text-leather">前川印刷株式会社の公式LINE</strong>へ送ってつかぁさい。作成イメージも公式LINEで確認していただけます。</p>'
+            '<div><label for="files" class="block text-sm font-medium">ロゴ・画像データ <span class="text-xs text-muted">任意</span></label>'
+            . '<input id="files" name="files[]" type="file" multiple accept="' . e(CUSTOMER_FILE_ACCEPT) . '" class="mt-2 block w-full rounded border border-line bg-white p-3 text-sm file:mr-3 file:min-h-10 file:rounded-[2px] file:border-0 file:bg-leather file:px-4 file:text-ivory">'
+            . '<p class="mt-1 text-xs leading-5 text-muted">ここから送れます。' . CUSTOMER_FILE_MAX_COUNT . 'つまで・1つ10MBまで（JPG・PNG・PDF・AI・EPS・SVG・PSD・ZIP）。<br>写真で撮ったロゴでも大丈夫です。</p>'
+            . (isset($errors['files']) ? '<p class="mt-1 text-sm text-red-700">' . e($errors['files']) . '</p>' : '')
+            . (($v['_had_files'] ?? false) && $errors ? '<p class="mt-1 text-sm text-red-700">お手数ですが、ファイルはもう一度選び直してつかぁさい。</p>' : '') . '</div>'
+            . '<p class="text-[0.95rem] leading-8">大きいデータや、あとから送りたいときは、<strong class="font-medium text-leather">前川印刷株式会社の公式LINE</strong>へ送ってつかぁさい。作成イメージも公式LINEで確認していただけます。</p>'
             . '<div class="flex flex-wrap items-center gap-5"><a href="' . e(CARDCASE_LINE_URL) . '" target="_blank" rel="noopener noreferrer" class="inline-flex min-h-12 items-center gap-2 rounded-[2px] bg-[#06C755] px-5 text-[0.95rem] font-medium text-white hover:opacity-90">' . chat_icon() . ' 公式LINEを開く</a>'
             . '<figure class="hidden text-center sm:block"><img src="' . e(url('/images/brand/line-qr.svg')) . '" alt="公式LINEのQRコード" width="116" height="116" class="h-[116px] w-[116px]"><figcaption class="mt-1 text-xs text-muted">スマホで読み取り</figcaption></figure></div>'
             . '<p class="text-xs leading-5 text-muted">LINE で送るときは、この注文書と同じお名前を書いてもらえると、照らし合わせがスムーズです。</p>')
@@ -293,6 +298,11 @@ function cardcase_page(array $v, array $errors = []): void
 
 function cardcase_save(): void
 {
+    // ファイルが大きすぎてサーバーが受け取りを止めたとき（フォームの中身が空になる）
+    if (empty($_POST) && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
+        cardcase_page([], ['files' => 'ファイルが大きすぎて受け取れませんでした。1つ10MBまでにするか、公式LINEで送ってつかぁさい。', '_form' => 'ファイルが大きすぎたため、送信できませんでした。お手数ですが、もう一度入力してつかぁさい。']);
+        return;
+    }
     verify_csrf();
     $v = [];
     foreach (['qty' => 5, 'use' => 10, 'use_other' => 50, 'mark' => 10, 'engrave' => 100, 'design' => 500, 'name' => 80, 'phone' => 20, 'email' => 100, 'receive' => 10, 'address' => 200, 'note' => 1500] as $k => $max) {
@@ -333,6 +343,11 @@ function cardcase_save(): void
     if (!$v['consent']) {
         $errors['consent'] = 'プライバシーポリシーへの同意にチェックを入れてつかぁさい。';
     }
+    $up = customer_files_check('files');
+    if ($up['error'] !== '') {
+        $errors['files'] = $up['error'];
+    }
+    $v['_had_files'] = $up['files'] !== [] || $up['error'] !== '';
     $recent = (int) db_value("SELECT COUNT(*) FROM login_attempts WHERE ip = ? AND email = 'contact-form' AND attempted_at > (NOW() - INTERVAL 1 HOUR)", [client_ip()]);
     if ($recent >= CONTACT_LIMIT_PER_HOUR) {
         $errors['_form'] = '短い時間にたくさん送られたので、いったん止めています。時間をおいてもう一度送るか、お電話でご連絡ください。';
@@ -349,27 +364,32 @@ function cardcase_save(): void
         . ($v['design'] !== '' ? "■配置・デザインのご希望：\n{$v['design']}\n" : '')
         . "\n【2】ご注文者・ご連絡先\n■お名前・会社名：{$v['name']} 様\n■お電話：{$phone}\n■メール：{$v['email']}\n■お受け取り方法：" . CARDCASE_RECEIVE[$v['receive']] . "\n"
         . ($v['address'] !== '' ? "■配送先：{$v['address']}\n" : '')
-        . "\n【3】ロゴデータ：公式LINEで受け取り（" . CARDCASE_LINE_URL . "）\n"
+        . "\n【3】ロゴデータ：" . ($up['files'] ? "フォームで受け取り\n" . implode('', array_map(static fn ($f) => '・' . $f['name'] . '（' . customer_file_size_text($f['size']) . "）\n", $up['files'])) : "公式LINEで受け取り（" . CARDCASE_LINE_URL . "）\n")
         . ($v['note'] !== '' ? "\n【4】その他・ご相談事項\n{$v['note']}\n" : '');
     $id = uuid();
     db_exec('INSERT INTO contact_messages (id, kind, name, email, phone, subject, body) VALUES (?, ?, ?, ?, ?, ?, ?)',
         [$id, 'custom_request', $v['name'], $v['email'], $phone, mb_substr('オリジナル名刺・カードケース注文書（' . $qty . '個・' . CARDCASE_MARKS[$v['mark']] . '）', 0, 200), $summary]);
     db_exec("INSERT INTO login_attempts (ip, email, succeeded) VALUES (?, 'contact-form', 1)", [client_ip()]);
+    $savedFiles = customer_files_store($id, $up['files']);
+    if ($savedFiles < count($up['files'])) {
+        error_log('[nori2023 cardcase] saved ' . $savedFiles . ' of ' . count($up['files']) . ' files for ' . $id);
+    }
 
     send_mail((string) SELLER_INFO['email'], '【名刺・カードケース注文書】' . $v['name'] . ' 様（' . $qty . '個）',
-        "オリジナル名刺・カードケースの注文書が届きました。\nこのメールに返信すると、お客さんに届きます。\nロゴは公式LINEに届いていないか確認してください。\n\n" . $summary
+        "オリジナル名刺・カードケースの注文書が届きました。\nこのメールに返信すると、お客さんに届きます。\n"
+        . ($savedFiles ? "添付ファイルが{$savedFiles}件あります。管理画面からダウンロードしてください。\n\n" : "ロゴは公式LINEに届いていないか確認してください。\n\n") . $summary
         . "\n管理画面：" . absolute_url('/admin/inquiries/' . $id) . "\n", $v['email']);
     send_mail($v['email'], '【' . SITE_NAME . '】オリジナル名刺・カードケースの注文書を受け付けました',
         "{$v['name']} 様\n\nオリジナル名刺・カードケースの注文書を送っていただき、ありがとうございます。\n「" . SITE_NAME . "」です。\n\n"
         . "次の内容で受け付けました。まだご注文は確定していません。\n内容を確認して、作成イメージとお見積りをお送りしますので、少しお待ちください。\n\n"
-        . (in_array($v['mark'], ['logo', 'both'], true) ? "▼企業ロゴ・画像データは、前川印刷株式会社の公式LINEへお送りください。\n" . CARDCASE_LINE_URL . "\n（注文書と同じお名前を書いていただくと、照らし合わせがスムーズです）\n\n" : '')
+        . (in_array($v['mark'], ['logo', 'both'], true) && !$up['files'] ? "▼企業ロゴ・画像データは、前川印刷株式会社の公式LINEへお送りください。\n" . CARDCASE_LINE_URL . "\n（注文書と同じお名前を書いていただくと、照らし合わせがスムーズです）\n\n" : '')
         . "------------------------------\n" . $summary . "------------------------------\n\n"
         . "※文字は12ポイント以上の大きさで刻印します。細かい文字は再現できない場合があります。\n"
         . "※このメールは送信専用のアドレスから自動でお送りしています。このメールへの返信は届きませんので、ご了承ください。\n\n"
         . SITE_NAME . "\n販売者：" . SELLER_INFO['company'] . " ／ 製造者：Nori2023\nTEL " . SELLER_INFO['tel'] . "（" . SELLER_INFO['tel_hours'] . "）\n" . absolute_url('/') . "\n");
     audit('cardcase.order_form', $id, ['qty' => $qty, 'mark' => $v['mark']]);
     $_SESSION['contact_done'] = $v['email'];
-    $_SESSION['cardcase_logo'] = in_array($v['mark'], ['logo', 'both'], true);
+    $_SESSION['cardcase_logo'] = in_array($v['mark'], ['logo', 'both'], true) && !$up['files'];
     redirect('/custom-cardcase/thanks');
 }
 

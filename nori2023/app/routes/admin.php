@@ -59,6 +59,7 @@ function route_admin(string $path): void
         $path === '/admin/settings' => $post ? admin_settings_save() : admin_settings(),
         $path === '/admin/inquiries' => admin_inquiries(),
         (bool) preg_match('#^/admin/inquiries/([0-9a-f-]{36})$#', $path, $m) => $post ? admin_inquiry_toggle($m[1]) : admin_inquiry_detail($m[1]),
+        (bool) preg_match('#^/admin/inquiries/([0-9a-f-]{36})/files/([0-9a-f-]{36})$#', $path, $m) => $post ? admin_inquiry_file_delete($m[1], $m[2]) : admin_inquiry_file($m[1], $m[2]),
         $path === '/admin/orders' => admin_orders(),
         (bool) preg_match('#^/admin/orders/([0-9a-f-]{36})$#', $path, $m) => admin_order_detail($m[1]),
         (bool) preg_match('#^/admin/orders/([0-9a-f-]{36})/ship$#', $path, $m) && $post => admin_order_ship($m[1]),

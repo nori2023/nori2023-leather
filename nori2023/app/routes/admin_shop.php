@@ -274,6 +274,7 @@ function admin_inquiry_detail(string $id): void
         . '<p><span class="text-muted">メール：</span><a href="' . e($reply) . '" class="text-leather underline">' . e($r['email']) . '</a></p>'
         . ($r['phone'] ? '<p><span class="text-muted">電話：</span><a href="tel:' . e($r['phone']) . '" class="text-leather underline">' . e($r['phone']) . '</a></p>' : '')
         . '<div class="border-t border-line pt-3"><p class="text-muted">内容</p><p class="mt-1 whitespace-pre-wrap break-words">' . e($r['body']) . '</p></div></div>'
+        . admin_inquiry_files_html($id)
         . '<div class="mt-4 flex flex-wrap gap-3"><a href="' . e($reply) . '" class="' . A_BTN_PRIMARY . '">メールで返事を書く</a>'
         . '<form method="post" action="' . e(url('/admin/inquiries/' . $id)) . '">' . csrf_field()
         . '<button class="' . A_BTN_GHOST . '">' . ($r['handled'] ? '未対応に戻す' : '対応済みにする') . '</button></form></div>'
@@ -285,5 +286,43 @@ function admin_inquiry_toggle(string $id): void
 {
     db_exec('UPDATE contact_messages SET handled = 1 - handled WHERE id = ?', [$id]);
     audit('contact.toggle', $id);
+    redirect('/admin/inquiries/' . $id . '?notice=saved');
+}
+
+function admin_inquiry_files_html(string $id): string
+{
+    $files = customer_files_of($id);
+    if (!$files) {
+        return '';
+    }
+    $li = '';
+    foreach ($files as $f) {
+        $u = url('/admin/inquiries/' . $id . '/files/' . $f['id']);
+        $li .= '<li class="flex flex-wrap items-center gap-4 border-t border-line py-3 first:border-0">'
+            . ((int) $f['is_image'] === 1 ? '<a href="' . e($u . '?inline=1') . '" target="_blank" rel="noopener"><img src="' . e($u . '?inline=1') . '" alt="" class="h-20 w-20 rounded border border-line bg-white object-contain"></a>' : '<span class="inline-flex h-20 w-20 items-center justify-center rounded border border-line bg-paper text-xs uppercase text-muted">' . e(pathinfo($f['original_name'], PATHINFO_EXTENSION) ?: 'file') . '</span>')
+            . '<div class="min-w-0 flex-1 text-sm"><p class="break-all font-medium">' . e($f['original_name']) . '</p><p class="text-xs text-muted">' . e(customer_file_size_text((int) $f['size'])) . '</p>'
+            . '<div class="mt-2 flex flex-wrap gap-2"><a href="' . e($u) . '" class="' . A_BTN_GHOST . '">ダウンロード</a>'
+            . '<form method="post" action="' . e($u) . '" data-confirm="このファイルを削除します。元に戻せません。よろしいですか？">' . csrf_field() . '<button class="' . A_BTN_GHOST . ' text-red-700">削除</button></form></div></div></li>';
+    }
+    return '<div class="' . A_CARD . ' mt-4"><h2 class="font-serif text-lg text-leather">添付ファイル（' . count($files) . '）</h2>'
+        . '<p class="mt-1 text-xs leading-5 text-muted">お客さんから届いたファイルです。見知らぬ形式のファイルは開かないでください。制作が終わって不要になったら削除してください。</p><ul class="mt-3">' . $li . '</ul></div>';
+}
+
+function admin_inquiry_file(string $id, string $fid): void
+{
+    $f = db_one('SELECT * FROM contact_files WHERE id = ? AND message_id = ?', [$fid, $id]);
+    if (!$f) {
+        redirect('/admin/inquiries/' . $id);
+    }
+    customer_file_send($f, query_str('inline', 2) === '1');
+}
+
+function admin_inquiry_file_delete(string $id, string $fid): void
+{
+    $f = db_one('SELECT * FROM contact_files WHERE id = ? AND message_id = ?', [$fid, $id]);
+    if ($f) {
+        customer_file_delete($f);
+        audit('contact.file_delete', $id, ['name' => $f['original_name']]);
+    }
     redirect('/admin/inquiries/' . $id . '?notice=saved');
 }
