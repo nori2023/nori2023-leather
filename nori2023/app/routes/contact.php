@@ -199,7 +199,7 @@ function contact_thanks(): void
 }
 
 // ================================================================== オリジナル名刺・カードケース 注文書
-const CARDCASE_LINE_URL = 'https://lin.ee/n5dP0cF'; // チラシに載せている、ロゴを送ってもらう公式LINE
+const CARDCASE_LINE_URL = LINE_URL; // ロゴを送ってもらう公式LINE（@228tbemy）
 const CARDCASE_USES = ['self' => 'ご自分用', 'gift' => 'プレゼント', 'other' => 'その他'];
 const CARDCASE_MARKS = ['text' => '文字を入れる', 'logo' => '企業ロゴを入れる', 'both' => '文字＋企業ロゴ', 'none' => '刻印なし'];
 const CARDCASE_RECEIVE = ['store' => '店頭受取', 'ship' => '配送希望', 'consult' => '相談したい'];
