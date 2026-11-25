@@ -239,12 +239,20 @@ function admin_payment_tester(): void
 function admin_inquiries(): void
 {
     $all = query_str('show', 10) === 'all';
-    $rows = db_all('SELECT * FROM contact_messages ' . ($all ? '' : 'WHERE handled = 0 ') . 'ORDER BY created_at DESC LIMIT 200');
+    $q = query_str('q', 60);
+    if ($q !== '') {
+        $like = '%' . addcslashes($q, '%_\\') . '%';
+        $rows = db_all('SELECT * FROM contact_messages WHERE subject LIKE ? OR name LIKE ? OR email LIKE ? OR phone LIKE ? OR body LIKE ? ORDER BY created_at DESC LIMIT 200', [$like, $like, $like, $like, $like]);
+        $all = true;
+    } else {
+        $rows = db_all('SELECT * FROM contact_messages ' . ($all ? '' : 'WHERE handled = 0 ') . 'ORDER BY created_at DESC LIMIT 200');
+    }
     $tab = static fn (string $label, string $q, bool $on) => '<a href="' . e(url('/admin/inquiries' . $q)) . '" class="inline-flex min-h-10 items-center rounded-full border px-4 text-sm '
         . ($on ? 'border-leather bg-leather text-ivory' : 'border-line bg-white') . '">' . e($label) . '</a>';
-    $h = '<div class="mb-4 flex flex-wrap gap-2">' . $tab('未対応', '', !$all) . $tab('対応済みも含めて全部', '?show=all', $all) . '</div>';
+    $h = '<form method="get" action="' . e(url('/admin/inquiries')) . '" class="mb-4 flex flex-wrap gap-2"><input name="q" value="' . e($q) . '" placeholder="受付番号・名前・LINEの表示名で探す（例：M261126-1234）" class="' . A_INPUT . ' max-w-md flex-1"><button class="' . A_BTN_GHOST . '">探す</button></form>'
+        . '<div class="mb-4 flex flex-wrap gap-2">' . $tab('未対応', '', !$all && $q === '') . $tab('対応済みも含めて全部', '?show=all', $all && $q === '') . '</div>';
     if (!$rows) {
-        $h .= '<p class="' . A_CARD . ' text-sm text-muted">' . ($all ? 'お問い合わせはまだありません。' : '未対応のお問い合わせはありません。') . '</p>';
+        $h .= '<p class="' . A_CARD . ' text-sm text-muted">' . ($q !== '' ? '「' . e($q) . '」に当てはまるものはありません。' : ($all ? 'お問い合わせはまだありません。' : '未対応のお問い合わせはありません。')) . '</p>';
     } else {
         $h .= '<ul class="space-y-2">';
         foreach ($rows as $r) {

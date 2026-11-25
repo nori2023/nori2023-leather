@@ -204,6 +204,24 @@ const CARDCASE_USES = ['self' => 'ご自分用', 'gift' => 'プレゼント', 'o
 const CARDCASE_MARKS = ['text' => '文字を入れる', 'logo' => '企業ロゴを入れる', 'both' => '文字＋企業ロゴ', 'none' => '刻印なし'];
 const CARDCASE_RECEIVE = ['store' => '店頭受取', 'ship' => '配送希望', 'consult' => '相談したい'];
 
+/** 受付番号（例：M261126-4821）。LINE でのやりとりと注文書をつなぐ目印 */
+function cardcase_new_number(): string
+{
+    for ($i = 0; $i < 20; $i++) {
+        $no = 'M' . date('ymd') . '-' . str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+        if (!db_value('SELECT COUNT(*) FROM contact_messages WHERE subject LIKE ?', ['%' . $no . '%'])) {
+            return $no;
+        }
+    }
+    return 'M' . date('ymdHis');
+}
+
+/** 公式LINEのトーク画面を、受付番号入りのメッセージを入れた状態で開くリンク */
+function cardcase_line_message_url(string $no, string $name): string
+{
+    return 'https://line.me/R/oaMessage/' . rawurlencode(LINE_ID) . '/?' . rawurlencode("受付番号 {$no}\n{$name} です。オリジナル名刺・カードケースの注文書を送りました。");
+}
+
 function cardcase_page(array $v, array $errors = []): void
 {
     $val = static fn (string $k): string => e((string) ($v[$k] ?? ''));
@@ -229,7 +247,7 @@ function cardcase_page(array $v, array $errors = []): void
         $features .= '<li class="rounded-card border border-gold/30 p-5"><p class="font-serif text-[1.05rem] leading-7 text-ivory">' . e($t) . '</p><p class="mt-2 text-sm leading-7 text-ivory/70">' . e($d) . '</p></li>';
     }
     $steps = '';
-    foreach (['この注文書を送る', 'ロゴは公式LINEへ送る', '作成イメージとお見積りを確認', 'OKをもろうたら制作開始', 'お渡し（店頭受取・配送）'] as $i => $t) {
+    foreach (['この注文書を送る（受付番号をお知らせします）', '前川印刷の公式LINEを友だち追加して、受付番号を送る', '作成イメージとお見積りを公式LINEで確認', 'OKをもろうたら制作開始', 'お渡し（店頭受取・配送）'] as $i => $t) {
         $steps .= '<li class="flex items-center gap-3 rounded-card border border-line bg-white px-4 py-3 text-sm"><span class="font-serif text-xl text-camel">' . ($i + 1) . '</span>' . e($t) . '</li>';
     }
 
@@ -255,7 +273,9 @@ function cardcase_page(array $v, array $errors = []): void
             . '<p class="mt-1 text-xs leading-5 text-muted">ここから送れます。' . CUSTOMER_FILE_MAX_COUNT . 'つまで・1つ10MBまで（JPG・PNG・PDF・AI・EPS・SVG・PSD・ZIP）。<br>写真で撮ったロゴでも大丈夫です。</p>'
             . (isset($errors['files']) ? '<p class="mt-1 text-sm text-red-700">' . e($errors['files']) . '</p>' : '')
             . (($v['_had_files'] ?? false) && $errors ? '<p class="mt-1 text-sm text-red-700">お手数ですが、ファイルはもう一度選び直してつかぁさい。</p>' : '') . '</div>'
-            . '<p class="text-[0.95rem] leading-8">大きいデータや、あとから送りたいときは、<strong class="font-medium text-leather">前川印刷株式会社の公式LINE</strong>へ送ってつかぁさい。作成イメージも公式LINEで確認していただけます。</p>'
+            . '<div class="rounded border border-[#06C755]/40 bg-[#06C755]/5 p-4 text-[0.95rem] leading-8"><p class="font-medium text-leather">作成イメージの確認は、前川印刷株式会社の公式LINEで行います</p>'
+            . '<p class="mt-1 text-sm leading-7">送信したあとに<strong class="font-medium">受付番号</strong>をお知らせしますので、公式LINEを友だち追加して、受付番号を送ってつかぁさい。大きいデータも、こちらへ送ってもらえます。</p></div>'
+            . $row('LINEの表示名', '<input id="line_name" name="line_name" maxlength="50" value="' . $val('line_name') . '" class="' . $in . ' max-w-[18rem]">', 'line_name', false, 'LINEで表示されるお名前が、上のお名前・会社名とちがう方は書いてつかぁさい（例：ニックネーム、ご家族の名前など）')
             . '<div class="flex flex-wrap items-center gap-5"><a href="' . e(CARDCASE_LINE_URL) . '" target="_blank" rel="noopener noreferrer" class="inline-flex min-h-12 items-center gap-2 rounded-[2px] bg-[#06C755] px-5 text-[0.95rem] font-medium text-white hover:opacity-90">' . chat_icon() . ' 公式LINEを開く</a>'
             . '<figure class="hidden text-center sm:block"><img src="' . e(url('/images/brand/line-qr.svg')) . '" alt="公式LINEのQRコード" width="116" height="116" class="h-[116px] w-[116px]"><figcaption class="mt-1 text-xs text-muted">スマホで読み取り</figcaption></figure></div>'
             . '<p class="text-xs leading-5 text-muted">LINE で送るときは、この注文書と同じお名前を書いてもらえると、照らし合わせがスムーズです。</p>')
@@ -305,7 +325,7 @@ function cardcase_save(): void
     }
     verify_csrf();
     $v = [];
-    foreach (['qty' => 5, 'use' => 10, 'use_other' => 50, 'mark' => 10, 'engrave' => 100, 'design' => 500, 'name' => 80, 'phone' => 20, 'email' => 100, 'receive' => 10, 'address' => 200, 'note' => 1500] as $k => $max) {
+    foreach (['qty' => 5, 'use' => 10, 'use_other' => 50, 'mark' => 10, 'engrave' => 100, 'design' => 500, 'name' => 80, 'line_name' => 50, 'phone' => 20, 'email' => 100, 'receive' => 10, 'address' => 200, 'note' => 1500] as $k => $max) {
         $v[$k] = post_str($k, $max);
     }
     $v['consent'] = !empty($_POST['consent']);
@@ -358,38 +378,49 @@ function cardcase_save(): void
     }
 
     $use = CARDCASE_USES[$v['use']] . ($v['use_other'] !== '' ? '（' . $v['use_other'] . '）' : '');
-    $summary = "【1】ご注文内容\n"
+    $no = cardcase_new_number();
+    $summary = "■受付番号：{$no}\n\n【1】ご注文内容\n"
         . "■ご注文数量：{$qty} 個\n■ご希望用途：{$use}\n■名入れ・刻印：" . CARDCASE_MARKS[$v['mark']] . "\n"
         . ($v['engrave'] !== '' ? "■刻印する文字：{$v['engrave']}\n" : '')
         . ($v['design'] !== '' ? "■配置・デザインのご希望：\n{$v['design']}\n" : '')
         . "\n【2】ご注文者・ご連絡先\n■お名前・会社名：{$v['name']} 様\n■お電話：{$phone}\n■メール：{$v['email']}\n■お受け取り方法：" . CARDCASE_RECEIVE[$v['receive']] . "\n"
         . ($v['address'] !== '' ? "■配送先：{$v['address']}\n" : '')
-        . "\n【3】ロゴデータ：" . ($up['files'] ? "フォームで受け取り\n" . implode('', array_map(static fn ($f) => '・' . $f['name'] . '（' . customer_file_size_text($f['size']) . "）\n", $up['files'])) : "公式LINEで受け取り（" . CARDCASE_LINE_URL . "）\n")
+        . "\n【3】ロゴデータ・デザイン確認（公式LINE）\n■LINEの表示名：" . ($v['line_name'] !== '' ? $v['line_name'] : '（お名前と同じ）') . "\n■ロゴデータ：" . ($up['files'] ? "フォームで受け取り\n" . implode('', array_map(static fn ($f) => '・' . $f['name'] . '（' . customer_file_size_text($f['size']) . "）\n", $up['files'])) : "公式LINEで受け取り（" . CARDCASE_LINE_URL . "）\n")
         . ($v['note'] !== '' ? "\n【4】その他・ご相談事項\n{$v['note']}\n" : '');
     $id = uuid();
     db_exec('INSERT INTO contact_messages (id, kind, name, email, phone, subject, body) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [$id, 'custom_request', $v['name'], $v['email'], $phone, mb_substr('オリジナル名刺・カードケース注文書（' . $qty . '個・' . CARDCASE_MARKS[$v['mark']] . '）', 0, 200), $summary]);
+        [$id, 'custom_request', $v['name'], $v['email'], $phone, mb_substr('[' . $no . '] オリジナル名刺・カードケース注文書（' . $qty . '個・' . CARDCASE_MARKS[$v['mark']] . '）', 0, 200), $summary]);
     db_exec("INSERT INTO login_attempts (ip, email, succeeded) VALUES (?, 'contact-form', 1)", [client_ip()]);
     $savedFiles = customer_files_store($id, $up['files']);
     if ($savedFiles < count($up['files'])) {
         error_log('[nori2023 cardcase] saved ' . $savedFiles . ' of ' . count($up['files']) . ' files for ' . $id);
     }
 
-    send_mail((string) SELLER_INFO['email'], '【名刺・カードケース注文書】' . $v['name'] . ' 様（' . $qty . '個）',
+    send_mail((string) SELLER_INFO['email'], '【名刺・カードケース注文書】' . $no . ' ' . $v['name'] . ' 様（' . $qty . '個）',
         "オリジナル名刺・カードケースの注文書が届きました。\nこのメールに返信すると、お客さんに届きます。\n"
+        . "公式LINEには「受付番号 {$no}」と届く予定です" . ($v['line_name'] !== '' ? "（LINEの表示名：{$v['line_name']}）" : '') . "。\n"
         . ($savedFiles ? "添付ファイルが{$savedFiles}件あります。管理画面からダウンロードしてください。\n\n" : "ロゴは公式LINEに届いていないか確認してください。\n\n") . $summary
         . "\n管理画面：" . absolute_url('/admin/inquiries/' . $id) . "\n", $v['email']);
     send_mail($v['email'], '【' . SITE_NAME . '】オリジナル名刺・カードケースの注文書を受け付けました',
         "{$v['name']} 様\n\nオリジナル名刺・カードケースの注文書を送っていただき、ありがとうございます。\n「" . SITE_NAME . "」です。\n\n"
-        . "次の内容で受け付けました。まだご注文は確定していません。\n内容を確認して、作成イメージとお見積りをお送りしますので、少しお待ちください。\n\n"
-        . (in_array($v['mark'], ['logo', 'both'], true) && !$up['files'] ? "▼企業ロゴ・画像データは、前川印刷株式会社の公式LINEへお送りください。\n" . CARDCASE_LINE_URL . "\n（注文書と同じお名前を書いていただくと、照らし合わせがスムーズです）\n\n" : '')
-        . "------------------------------\n" . $summary . "------------------------------\n\n"
+        . "次の内容で受け付けました。まだご注文は確定していません。\n\n"
+        . "■受付番号：{$no}\n\n"
+        . "【お願い】前川印刷株式会社の公式LINEの登録\n作成イメージの確認やご相談は、前川印刷株式会社の公式LINEで行います。\n"
+        . "お手数ですが、次の手順で登録をお願いします。\n"
+        . "1. 公式LINEを友だち追加する\n   " . CARDCASE_LINE_URL . "\n"
+        . "2. トーク画面で「受付番号 {$no}」とお名前を送る\n"
+        . "   （次のリンクを開くと、受付番号の入ったメッセージが用意されます）\n   " . cardcase_line_message_url($no, $v['name']) . "\n"
+        . "LINEのお名前と注文書のお名前がちがっていても、受付番号でお申し込みを確認できます。\n"
+        . (in_array($v['mark'], ['logo', 'both'], true) && !$up['files'] ? "企業ロゴ・画像データも、こちらの公式LINEへお送りください。\n" : '')
+        . "\n------------------------------\n" . $summary . "------------------------------\n\n"
         . "※文字は12ポイント以上の大きさで刻印します。細かい文字は再現できない場合があります。\n"
         . "※このメールは送信専用のアドレスから自動でお送りしています。このメールへの返信は届きませんので、ご了承ください。\n\n"
         . SITE_NAME . "\n販売者：" . SELLER_INFO['company'] . " ／ 製造者：Nori2023\nTEL " . SELLER_INFO['tel'] . "（" . SELLER_INFO['tel_hours'] . "）\n" . absolute_url('/') . "\n");
     audit('cardcase.order_form', $id, ['qty' => $qty, 'mark' => $v['mark']]);
     $_SESSION['contact_done'] = $v['email'];
     $_SESSION['cardcase_logo'] = in_array($v['mark'], ['logo', 'both'], true) && !$up['files'];
+    $_SESSION['cardcase_no'] = $no;
+    $_SESSION['cardcase_name'] = $v['name'];
     redirect('/custom-cardcase/thanks');
 }
 
@@ -397,13 +428,23 @@ function cardcase_thanks(): void
 {
     $email = (string) ($_SESSION['contact_done'] ?? '');
     $logo = !empty($_SESSION['cardcase_logo']);
-    unset($_SESSION['contact_done'], $_SESSION['cardcase_logo']);
+    $no = (string) ($_SESSION['cardcase_no'] ?? '');
+    $name = (string) ($_SESSION['cardcase_name'] ?? '');
+    unset($_SESSION['contact_done'], $_SESSION['cardcase_logo'], $_SESSION['cardcase_no'], $_SESSION['cardcase_name']);
     $body = breadcrumbs([['/custom-cardcase', 'オリジナル名刺・カードケース']])
         . '<div class="mx-auto max-w-xl px-5 py-20 text-center"><p class="eyebrow">Thank you</p>'
         . '<h1 class="mt-3 text-[1.5rem]">注文書を受け付けました</h1><div class="stitch mx-auto mt-6 w-16" aria-hidden="true"></div>'
         . '<p class="mt-8 text-[0.95rem] leading-8">ありがとうございます。<br>内容を見て、作成イメージとお見積りをお送りしますけぇ、ちいと待っとってつかぁさい。<br><span class="text-sm text-muted">（まだご注文は確定していません）</span></p>'
-        . ($logo ? '<div class="mt-8 rounded-card border border-line bg-white p-5 text-left text-sm leading-7"><p class="font-medium text-leather">ロゴ・画像データを送ってつかぁさい</p><p class="mt-1">前川印刷株式会社の公式LINEへ、注文書と同じお名前を添えて送ってください。</p>'
-            . '<a href="' . e(CARDCASE_LINE_URL) . '" target="_blank" rel="noopener noreferrer" class="mt-3 inline-flex min-h-12 items-center gap-2 rounded-[2px] bg-[#06C755] px-5 font-medium text-white hover:opacity-90">' . chat_icon() . ' 公式LINEを開く</a></div>' : '')
+        . ($no !== '' ? '<div class="mt-8 rounded-card border border-line bg-white p-5"><p class="text-sm text-muted">受付番号</p><p class="mt-1 font-mono text-[1.6rem] tracking-[0.08em] text-leather">' . e($no) . '</p></div>'
+            . '<div class="mt-6 rounded-card border-2 border-[#06C755] bg-white p-5 text-left text-sm leading-7">'
+            . '<p class="text-base font-medium text-leather">公式LINEの登録をお願いします</p>'
+            . '<p class="mt-1">作成イメージの確認やご相談は、<strong class="font-medium">前川印刷株式会社の公式LINE</strong>で行います。LINEのお名前と注文書のお名前がちがっても分かるよう、<strong class="font-medium">受付番号</strong>を送ってつかぁさい。' . ($logo ? 'ロゴ・画像データも、こちらへ送ってください。' : '') . '</p>'
+            . '<ol class="mt-4 space-y-4">'
+            . '<li><p class="font-medium">① 友だち追加する</p><a href="' . e(CARDCASE_LINE_URL) . '" target="_blank" rel="noopener noreferrer" class="mt-2 inline-flex min-h-12 items-center gap-2 rounded-[2px] bg-[#06C755] px-5 font-medium text-white hover:opacity-90">' . chat_icon() . ' 公式LINEを友だち追加</a>'
+            . '<figure class="mt-3 hidden sm:block"><img src="' . e(url('/images/brand/line-qr.svg')) . '" alt="公式LINEのQRコード" width="116" height="116" class="h-[116px] w-[116px]"><figcaption class="mt-1 text-xs text-muted">パソコンの方は、スマホで読み取ってつかぁさい</figcaption></figure></li>'
+            . '<li><p class="font-medium">② 受付番号を送る</p><a href="' . e(cardcase_line_message_url($no, $name)) . '" target="_blank" rel="noopener noreferrer" class="mt-2 inline-flex min-h-12 items-center gap-2 rounded-[2px] border-2 border-[#06C755] bg-white px-5 font-medium text-[#05a648] hover:bg-[#06C755]/5">' . chat_icon() . ' 受付番号をLINEで送る</a>'
+            . '<p class="mt-2 text-xs leading-5 text-muted">ボタンを押すと、受付番号の入ったメッセージが用意されます。そのまま送信してください。うまく開かんときは、トーク画面に「受付番号 ' . e($no) . '」と書いて送ってください。</p></li>'
+            . '</ol></div>' : '')
         . ($email !== '' ? '<p class="mt-6 text-sm leading-7 text-muted">受付のメールを <strong class="font-medium text-leather">' . e($email) . '</strong> に送りました。<br>届かんときは、迷惑メールのフォルダも見てつかぁさい。</p>' : '')
         . '<div class="mt-10 flex flex-wrap justify-center gap-3">' . button_link('/shop', '作品を見る', 'outline') . button_link('/', 'トップに戻る', 'outline') . '</div></div>';
     render_page(['title' => '注文書を受け付けました', 'path' => '/custom-cardcase/thanks', 'noindex' => true, 'nostore' => true], $body);
