@@ -8,7 +8,6 @@ require APP_DIR . '/routes/public_content.php';
 const IG_EMPTY_NOTE = '新作のお知らせは Instagram（@nori2023_）でしよります。';
 
 const COMING_SOON = [
-    '/custom-cardcase' => ['オリジナル名刺入れ・カードケース', '名入れの相談は、お問い合わせからでも受けとりますけぇ。'],
     '/leather-care' => ['革のお手入れ', null],
     '/order' => ['オーダーメイド相談', null],
     '/legal/terms' => ['利用規約', null],
