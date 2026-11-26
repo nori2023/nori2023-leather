@@ -168,14 +168,44 @@ label[for="zeus_token_action_type_quick"], label[for="zeus_token_action_type_new
 .pcard-ph { transition: transform 0.5s cubic-bezier(.2,.7,.2,1), box-shadow 0.5s cubic-bezier(.2,.7,.2,1); }
 .pcard:hover .pcard-ph, .pcard:focus-visible .pcard-ph { transform: translateY(-6px); box-shadow: 0 14px 28px rgba(73, 51, 38, 0.18); }
 @media (prefers-reduced-motion: no-preference) {
-  .motion .mo-reveal { clip-path: inset(100% 0 0 0); transition: clip-path 1.1s cubic-bezier(.65,0,.25,1) var(--mo-d, 0s); }
-  .motion .mo-reveal.is-in { clip-path: inset(0 0 0 0); }
+  /* 共通：写真が少し大きい状態から引く */
   .motion .mo-reveal .mo-zoom { transform: scale(1.2); transition: transform 1.6s cubic-bezier(.2,.7,.2,1) var(--mo-d, 0s), scale 0.7s cubic-bezier(.2,.7,.2,1); }
   .motion .mo-reveal.is-in .mo-zoom { transform: none; }
-  .motion .mo-fade { opacity: 0; translate: 0 24px; transition: opacity 1s cubic-bezier(.2,.7,.2,1) var(--mo-d, 0s), translate 1s cubic-bezier(.2,.7,.2,1) var(--mo-d, 0s); }
-  .motion .mo-fade.is-in { opacity: 1; translate: none; }
+  .motion .mo-reveal { transition: clip-path 1.1s cubic-bezier(.65,0,.25,1) var(--mo-d, 0s), opacity 1.1s cubic-bezier(.2,.7,.2,1) var(--mo-d, 0s), filter 1.4s cubic-bezier(.2,.7,.2,1) var(--mo-d, 0s), transform 0.9s cubic-bezier(.3,1.4,.5,1) var(--mo-d, 0s); }
+
+  /* up：下から幕が上がる（販売中の作品） */
+  .motion .mo-t-up { clip-path: inset(100% 0 0 0); }
+  /* down：上から幕が下りる */
+  .motion .mo-t-down { clip-path: inset(0 0 100% 0); }
+  /* left：左から右へ開く（作品の帯） */
+  .motion .mo-t-left { clip-path: inset(0 100% 0 0); }
+  /* iris：真ん中から丸く広がる */
+  .motion .mo-t-iris { clip-path: circle(0% at 50% 50%); transition-duration: 1.4s; }
+  /* diag：ななめに切り開く */
+  .motion .mo-t-diag { clip-path: polygon(0 0, 0 0, 0 0, 0 0); transition-duration: 1.3s; }
+  /* zoom：遠くから寄ってくるように */
+  .motion .mo-t-zoom { opacity: 0; }
+  .motion .mo-t-zoom .mo-zoom { transform: scale(1.45); transition-duration: 1.8s; }
+  /* blur：ぼかしからくっきり（SOLD OUT） */
+  .motion .mo-t-blur { opacity: 0; filter: blur(14px) sepia(0.6); }
+  /* pop：ポンと出る（Instagram） */
+  .motion .mo-t-pop { opacity: 0; transform: scale(0.82); }
+  .motion .mo-t-pop .mo-zoom { transform: none; }
+
+  .motion .mo-reveal.is-in { opacity: 1; filter: none; }
+  .motion .mo-t-pop.is-in { transform: none; }
+  .motion .mo-t-up.is-in, .motion .mo-t-down.is-in, .motion .mo-t-left.is-in { clip-path: inset(0 0 0 0); }
+  .motion .mo-t-iris.is-in { clip-path: circle(75% at 50% 50%); }
+  .motion .mo-t-diag.is-in { clip-path: polygon(0 0, 200% 0, 0 200%, 0 0); }
+
+  /* 包む枠がない写真 */
+  .motion .mo-fade { opacity: 0; translate: 0 24px; transition: opacity 1s cubic-bezier(.2,.7,.2,1) var(--mo-d, 0s), translate 1s cubic-bezier(.2,.7,.2,1) var(--mo-d, 0s), rotate 1.2s cubic-bezier(.2,.7,.2,1) var(--mo-d, 0s), scale 1.2s cubic-bezier(.2,.7,.2,1) var(--mo-d, 0s); }
+  .motion .mo-t-spin { translate: none; rotate: -120deg; scale: 0.6; }
+  .motion .mo-fade.is-in { opacity: 1; translate: none; rotate: none; scale: none; }
+
   /* SOLD OUT はハンコを押すように */
   .motion .mo-reveal .so-stamp { opacity: 0; transform: rotate(-10deg) scale(2.3); }
-  .motion .mo-reveal.is-in .so-stamp { animation: so-stamp 0.5s calc(var(--mo-d, 0s) + 1s) cubic-bezier(.3,1.6,.5,1) forwards; }
+  .motion .mo-reveal.is-in .so-stamp { animation: so-stamp 0.5s calc(var(--mo-d, 0s) + 1.2s) cubic-bezier(.3,1.6,.5,1) forwards; }
   @keyframes so-stamp { to { opacity: 1; transform: rotate(-10deg) scale(1); } }
 }
+

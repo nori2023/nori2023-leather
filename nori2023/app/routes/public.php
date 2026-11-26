@@ -119,7 +119,7 @@ function page_home(): void
 <section class="bg-ink text-ivory">
   <div class="mx-auto grid max-w-6xl items-center gap-10 px-5 py-20 md:grid-cols-2 md:py-24">
     <div class="relative mx-auto aspect-square w-full max-w-md overflow-hidden rounded-card md:order-2 md:max-w-lg">
-      <img src="{$h(e(url('/images/brand/cardcase-gift2.jpg')))}" alt="名入れ・ロゴ刻印ができる、封筒型の名刺・カードケース" loading="lazy" data-zoom class="absolute inset-0 h-full w-full object-cover">
+      <img data-motion="diag" src="{$h(e(url('/images/brand/cardcase-gift2.jpg')))}" alt="名入れ・ロゴ刻印ができる、封筒型の名刺・カードケース" loading="lazy" data-zoom class="absolute inset-0 h-full w-full object-cover">
     </div>
     <div>
       <p class="eyebrow !text-gold">Custom card case</p>
@@ -133,7 +133,7 @@ function page_home(): void
 
 <section class="mx-auto grid max-w-6xl items-center gap-10 px-5 py-20 sm:py-24 md:grid-cols-[2fr_3fr]">
   <div class="relative mx-auto aspect-[3/4] w-full max-w-sm overflow-hidden rounded-card">
-    <img src="{$h(e(url('/images/site/maker-illustration.jpg')))}" alt="工房で革小物を縫う制作者のイラスト" loading="lazy" data-zoom class="absolute inset-0 h-full w-full object-cover">
+    <img data-motion="iris" src="{$h(e(url('/images/site/maker-illustration.jpg')))}" alt="工房で革小物を縫う制作者のイラスト" loading="lazy" data-zoom class="absolute inset-0 h-full w-full object-cover">
   </div>
   <div>
     {$h(section_heading('作っとるんは、こがぁなおっさんです。', 'About the maker', null, 'left'))}

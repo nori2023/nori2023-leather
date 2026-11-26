@@ -147,6 +147,19 @@
   if (!root) return;
   var skip = ".hero, [data-gallery], dialog, [data-no-motion], header, footer";
   var targets = [];
+  // 写真ごとに動きを変える：場所で決まるもの以外は、順番に入れ替えていく
+  var rotation = ["iris", "diag", "left", "zoom", "down"];
+  var turn = 0;
+  function pickType(img, box) {
+    var fixed = img.closest("[data-motion]");
+    if (fixed) return fixed.getAttribute("data-motion");
+    if (!box) return img.classList.contains("rounded-full") ? "spin" : "rise";
+    if (box.querySelector(".so-stamp")) return "blur";          // SOLD OUT：思い出のようにぼかしから
+    if (box.classList.contains("pcard-ph")) return "up";       // 販売中の作品：幕が上がる
+    if (img.closest("[data-autoslide]")) return "left";        // 作品の帯：左から右へ開く
+    if (img.closest('a[href*="instagram.com"]')) return "pop";  // Instagram：ポンと出る
+    return rotation[turn++ % rotation.length];
+  }
   root.querySelectorAll("img").forEach(function (img) {
     if (img.closest(skip)) return;
     // 写真を包んでいる「はみ出しを隠す枠」を探す（なければ写真そのもの）
@@ -158,7 +171,7 @@
     // すでに画面の上側にある（読み込み直後に見えている）ものは動かさない
     var r = el.getBoundingClientRect();
     if (r.bottom < 0) return;
-    el.classList.add(box ? "mo-reveal" : "mo-fade");
+    el.classList.add(box ? "mo-reveal" : "mo-fade", "mo-t-" + pickType(img, box));
     if (box) img.classList.add("mo-zoom");
     // 同じ並びの中で少しずつずらす
     var sib = el.closest("li, a, figure") || el;
