@@ -726,10 +726,10 @@ function admin_settings(): void
 {
     $hero = hero_setting();
     $about = get_setting('page.about', ['body' => null]);
-    $img = $hero['imageKey'] ? upload_url($hero['imageKey']) : url('/images/works/coincase-natural-2.jpg');
+    $img = $hero['imageKey'] ? upload_url($hero['imageKey']) : url(HERO_DEFAULT_IMAGE);
     $h = '<div class="space-y-6"><section class="' . A_CARD . '"><h2 class="font-serif text-lg text-leather">トップページのメイン画像</h2>'
         . '<div class="mt-3 flex flex-wrap items-start gap-4"><img src="' . e($img) . '" alt="現在のメイン画像" class="h-40 w-32 rounded object-cover">'
-        . '<div class="flex-1 space-y-2 text-sm"><p class="text-muted">' . ($hero['imageKey'] ? 'アップロードした画像を表示中' : '初期画像（ナチュラルのコインケース）を表示中') . '</p>'
+        . '<div class="flex-1 space-y-2 text-sm"><p class="text-muted">' . ($hero['imageKey'] ? 'アップロードした画像を表示中' : '初期画像（工房のランドセル）を表示中') . '</p>'
         . '<label class="' . A_BTN_GHOST . ' cursor-pointer">画像を選んで変更<input type="file" accept="image/*" class="sr-only" data-hero-input></label>'
         . '<p data-hero-status class="text-muted" aria-live="polite"></p>';
     if ($hero['imageKey']) {

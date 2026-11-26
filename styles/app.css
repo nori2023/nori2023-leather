@@ -131,3 +131,35 @@ label[for="zeus_token_action_type_quick"], label[for="zeus_token_action_type_new
   .tally.is-clack .tally__body { animation: none; }
 }
 @media (max-width: 380px) { .tally { transform: scale(.9); transform-origin: top center; margin-bottom: -30px; } .nori-counter__foot { font-size: 14px; } }
+
+/* ===== トップページ：開いた瞬間の演出 ===== */
+.hero-shine { position: relative; display: flex; overflow: hidden; border-radius: 2px; }
+.hero-shine > a { flex: 1; }
+.hero-line { display: block; overflow: hidden; padding-bottom: 0.08em; }
+.hero-line > span { display: inline-block; }
+.hero-scroll { display: none; }
+@media (min-width: 768px) {
+  .hero-scroll { display: block; position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); font: 500 10px/1 var(--font-sans); letter-spacing: 0.3em; color: var(--color-gold); text-align: center; }
+  .hero-scroll i { display: block; margin: 10px auto 0; width: 1px; height: 42px; background: repeating-linear-gradient(180deg, var(--color-gold) 0 5px, transparent 5px 9px); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .hero-kb { transform: scale(1.16); animation: hero-kb 9s cubic-bezier(.2,.7,.2,1) forwards; will-change: transform; }
+  @keyframes hero-kb { to { transform: scale(1.02); } }
+  .hero-ey { opacity: 0; letter-spacing: 0.9em; animation: hero-ey 1.4s 0.2s cubic-bezier(.2,.7,.2,1) forwards; }
+  @keyframes hero-ey { to { opacity: 1; letter-spacing: 0.3em; } }
+  .hero-line > span { transform: translateY(110%); animation: hero-up 1.1s cubic-bezier(.2,.7,.2,1) forwards; }
+  .hero-d1 { animation-delay: 0.45s !important; }
+  .hero-d2 { animation-delay: 0.75s !important; }
+  .hero-d3 { animation-delay: 0.95s !important; }
+  @keyframes hero-up { to { transform: none; } }
+  .hero-gl { transform: scaleX(0); transform-origin: left; animation: hero-gl 1s 1.35s cubic-bezier(.2,.7,.2,1) forwards; }
+  @keyframes hero-gl { to { transform: none; } }
+  .hero-fade { opacity: 0; transform: translateY(12px); animation: hero-fade 1s cubic-bezier(.2,.7,.2,1) forwards; }
+  .hero-f1 { animation-delay: 1.5s; }
+  .hero-f2 { animation-delay: 1.8s; }
+  @keyframes hero-fade { to { opacity: 1; transform: none; } }
+  .hero-shine::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,0.45) 50%, transparent 70%); transform: translateX(-120%); animation: hero-shine 3.6s 3s ease-in-out infinite; }
+  @keyframes hero-shine { 0%, 65% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+  .hero-scroll i { -webkit-mask: linear-gradient(180deg, #000 0 50%, transparent 50%); mask: linear-gradient(180deg, #000 0 50%, transparent 50%); -webkit-mask-size: 100% 200%; mask-size: 100% 200%; animation: hero-drip 1.8s linear infinite; }
+  @keyframes hero-drip { from { -webkit-mask-position: 0 100%; mask-position: 0 100%; } to { -webkit-mask-position: 0 -100%; mask-position: 0 -100%; } }
+}

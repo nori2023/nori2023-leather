@@ -27,6 +27,8 @@ const SITE_DESCRIPTION = '「おっさんが、ひとつひとつ作っとりま
 const INSTAGRAM_HANDLE = '@nori2023_';
 const INSTAGRAM_URL = 'https://www.instagram.com/nori2023_/';
 const LINE_ID = '@228tbemy';
+/** トップページの写真（管理画面で差し替えていないとき） */
+const HERO_DEFAULT_IMAGE = '/images/works/backpack-studio.jpg';
 const LINE_URL = 'https://line.me/R/ti/p/@228tbemy';
 
 const MAIN_NAV = [

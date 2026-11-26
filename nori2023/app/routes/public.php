@@ -49,12 +49,15 @@ function page_home(): void
     $onSale = list_public_products(['on_sale', 'reserved'], null, 6);
     $soldOut = list_public_products(['sold_out'], null, 4);
     $igPosts = list_instagram_posts(6);
-    $heroImg = $hero['imageKey'] ? upload_url($hero['imageKey']) : url('/images/works/coincase-natural-2.jpg');
+    $heroImg = $hero['imageKey'] ? upload_url($hero['imageKey']) : url(HERO_DEFAULT_IMAGE);
     $catch = $hero['catch'];
     $pos = mb_strpos($catch, '、');
-    $catchHtml = ($pos !== false && $pos > 0 && $pos < mb_strlen($catch) - 1)
-        ? e(mb_substr($catch, 0, $pos + 1)) . '<br>' . e(mb_substr($catch, $pos + 1))
-        : e($catch);
+    // 1行ずつ下からせり上がるように、行ごとに包む
+    $catchLines = ($pos !== false && $pos > 0 && $pos < mb_strlen($catch) - 1) ? [mb_substr($catch, 0, $pos + 1), mb_substr($catch, $pos + 1)] : [$catch];
+    $catchHtml = '';
+    foreach ($catchLines as $i => $line) {
+        $catchHtml .= '<span class="hero-line"><span class="hero-d' . ($i + 2) . '">' . ($i === 0 ? '「' : '') . e($line) . ($i === count($catchLines) - 1 ? '」' : '') . '</span></span>';
+    }
 
     $steps = '';
     foreach ([['裁断', "革の表情を見て\n取る場所を決めるんよ"], ['縫製', "ひと針ずつ\n手で縫うとります"], ['仕上げ', "コバを磨いて\n手触りを整えるんよ"]] as [$t, $d]) {
@@ -63,24 +66,26 @@ function page_home(): void
     }
 
     $body = <<<HTML
-<section class="relative overflow-hidden bg-leather text-ivory">
+<section class="hero relative overflow-hidden bg-leather text-ivory">
   <div class="hero-dots absolute inset-0 opacity-[0.15]" aria-hidden="true"></div>
-  <div class="relative mx-auto grid max-w-6xl md:min-h-[78vh] md:grid-cols-2 md:items-center">
-    <div class="relative aspect-[5/4] md:order-2 md:aspect-auto md:h-full">
-      <img src="{$h(e($heroImg))}" alt="ヌメ革の作品" fetchpriority="high" class="absolute inset-0 h-full w-full object-cover">
+  <div class="relative mx-auto grid max-w-6xl md:min-h-[82vh] md:grid-cols-2 md:items-center">
+    <div class="relative aspect-[5/4] overflow-hidden md:order-2 md:aspect-auto md:h-full">
+      <img src="{$h(e($heroImg))}" alt="おっさんが手で縫ったヌメ革のランドセル" fetchpriority="high" class="hero-kb absolute inset-0 h-full w-full object-cover object-[50%_62%]">
       <div class="absolute inset-0 bg-gradient-to-t from-leather via-transparent to-transparent md:bg-gradient-to-r" aria-hidden="true"></div>
     </div>
     <div class="relative px-6 pb-16 pt-6 md:px-10 md:py-20">
-      <p class="eyebrow !text-gold">Nori2023 · Handmade leather goods</p>
-      <h1 class="mt-4 text-[1.7rem] leading-snug !text-ivory sm:text-[2.4rem]">{$h(e(SITE_NAME))}</h1>
-      <p class="mt-6 font-serif text-[1.15rem] leading-relaxed tracking-[0.1em] text-ivory sm:text-[1.35rem]">「{$catchHtml}」</p>
-      <p class="mt-3 text-[0.95rem] text-ivory/80">{$h(e($hero['sub']))}</p>
-      <div class="mt-10 flex flex-col gap-3 sm:flex-row">
-        {$h(button_link('/shop', '作品、見てみんさい', 'gold'))}
+      <p class="eyebrow hero-ey !text-gold">Nori2023 · Handmade leather goods</p>
+      <h1 class="mt-4 text-[1.7rem] leading-snug !text-ivory sm:text-[2.4rem]"><span class="hero-line"><span class="hero-d1">{$h(e(SITE_NAME))}</span></span></h1>
+      <p class="mt-6 font-serif text-[1.15rem] leading-relaxed tracking-[0.1em] text-ivory sm:text-[1.35rem]">{$catchHtml}</p>
+      <div class="hero-gl mt-6 h-px w-16 bg-gold/80" aria-hidden="true"></div>
+      <p class="hero-fade hero-f1 mt-5 text-[0.95rem] text-ivory/80">{$h(e($hero['sub']))}</p>
+      <div class="hero-fade hero-f2 mt-10 flex flex-col gap-3 sm:flex-row">
+        <span class="hero-shine">{$h(button_link('/shop', '作品、見てみんさい', 'gold'))}</span>
         {$h(button_link('/custom-cardcase', '自分だけの名刺入れ、作らん？', 'ghostLight'))}
       </div>
     </div>
   </div>
+  <div class="hero-scroll" aria-hidden="true">SCROLL<i></i></div>
 </section>
 
 <section class="mx-auto max-w-6xl px-5 py-20 sm:py-24">
