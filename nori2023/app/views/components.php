@@ -66,17 +66,17 @@ function product_img(array $img, string $sizes, bool $eager = false, string $cls
 function sold_out_overlay(bool $large = false): string
 {
     return '<div class="pointer-events-none absolute inset-0 flex items-center justify-center bg-ink/35" aria-label="SOLD OUT">'
-        . '<span class="border border-ivory/90 font-serif tracking-[0.3em] text-ivory ' . ($large ? 'px-6 py-2.5 text-xl' : 'px-3 py-1.5 text-sm') . '">SOLD OUT</span></div>';
+        . '<span class="so-stamp border border-ivory/90 font-serif tracking-[0.3em] text-ivory ' . ($large ? 'px-6 py-2.5 text-xl' : 'px-3 py-1.5 text-sm') . '">SOLD OUT</span></div>';
 }
 
 function product_card(array $p, bool $eager = false): string
 {
     $img = $p['images'][0] ?? null;
     $soldOut = $p['status'] === 'sold_out';
-    $h = '<a href="' . e(url('/shop/' . $p['slug'])) . '" class="group block">';
-    $h .= '<div class="relative aspect-[4/5] overflow-hidden rounded-card bg-sand">';
+    $h = '<a href="' . e(url('/shop/' . $p['slug'])) . '" class="pcard group block">';
+    $h .= '<div class="pcard-ph relative aspect-[4/5] overflow-hidden rounded-card bg-sand">';
     $h .= $img
-        ? product_img($img, '(min-width: 1024px) 30vw, 50vw', $eager, 'transition-transform duration-700 ease-soft group-hover:scale-[1.03]' . ($soldOut ? ' grayscale-[35%]' : ''))
+        ? product_img($img, '(min-width: 1024px) 30vw, 50vw', $eager, 'transition-transform duration-700 ease-soft group-hover:scale-[1.08]' . ($soldOut ? ' grayscale-[35%]' : ''))
         : placeholder();
     if ($soldOut) {
         $h .= sold_out_overlay();

@@ -137,3 +137,49 @@
     }
   });
 })();
+
+// ---- 写真の動き：画面に入ったら、下から幕が上がるように現れる（トップの最初の写真・拡大表示・商品ページの写真は除く）
+(function () {
+  "use strict";
+  if (!("IntersectionObserver" in window)) return;
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  var root = document.getElementById("main");
+  if (!root) return;
+  var skip = ".hero, [data-gallery], dialog, [data-no-motion], header, footer";
+  var targets = [];
+  root.querySelectorAll("img").forEach(function (img) {
+    if (img.closest(skip)) return;
+    // 写真を包んでいる「はみ出しを隠す枠」を探す（なければ写真そのもの）
+    var box = img.parentElement, n = 0;
+    while (box && box !== root && n < 3 && getComputedStyle(box).overflow.indexOf("hidden") === -1) { box = box.parentElement; n++; }
+    if (!box || box === root || n >= 3) { box = null; }
+    var el = box || img;
+    if (el.classList.contains("mo-reveal") || el.classList.contains("mo-fade")) return;
+    // すでに画面の上側にある（読み込み直後に見えている）ものは動かさない
+    var r = el.getBoundingClientRect();
+    if (r.bottom < 0) return;
+    el.classList.add(box ? "mo-reveal" : "mo-fade");
+    if (box) img.classList.add("mo-zoom");
+    // 同じ並びの中で少しずつずらす
+    var sib = el.closest("li, a, figure") || el;
+    var list = sib.parentElement ? Array.prototype.indexOf.call(sib.parentElement.children, sib) : 0;
+    el.style.setProperty("--mo-d", ((list % 3) * 0.12).toFixed(2) + "s");
+    targets.push(el);
+  });
+  if (!targets.length) return;
+  document.documentElement.classList.add("motion");
+  // 隠れている写真そのものは見張れないので、外側の要素を見張る
+  var watch = new Map();
+  var io = new IntersectionObserver(function (es) {
+    es.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      (watch.get(e.target) || []).forEach(function (el) { el.classList.add("is-in"); });
+      io.unobserve(e.target);
+    });
+  }, { threshold: 0.1, rootMargin: "0px 0px -6% 0px" });
+  targets.forEach(function (el) {
+    var w = el.parentElement || el;
+    if (!watch.has(w)) { watch.set(w, []); io.observe(w); }
+    watch.get(w).push(el);
+  });
+})();
